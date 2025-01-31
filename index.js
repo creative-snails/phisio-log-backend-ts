@@ -10,12 +10,11 @@ app.use(cors())
 
 // Initialize Google Speech-to-Text client
 const client = new SpeechClient({
-  keyFilename: './phisiolog-service-account.json', // Replace with the path to your service account key file
+  keyFilename: './phisiolog-service-account.json',
 })
 
-// Define a route to handle audio file upload and transcription
 app.post('/transcribe', async (req, res) => {
-  const audioFilePath = './male.wav' // Replace with the path to your audio file
+  const audioFilePath = './transcript-test-10-seconds.wav'
 
   const audio = {
     content: fs.readFileSync(audioFilePath).toString('base64'),
@@ -28,6 +27,7 @@ app.post('/transcribe', async (req, res) => {
 
   const request = {
     audio: audio,
+    sampleRateHertz: 16000,
     config: config,
   }
 
