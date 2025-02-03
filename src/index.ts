@@ -13,7 +13,7 @@ const client = new SpeechClient({
   keyFilename: './phisiolog-service-account.json',
 })
 
-app.post('/transcribe', async (req, res) => {
+app.post('/transcribe', async (req: any, res: any) => {
   const audioFilePath = './transcript-test-10-seconds.wav'
 
   const audio = {
@@ -34,7 +34,7 @@ app.post('/transcribe', async (req, res) => {
   try {
     const [response] = await client.recognize(request)
     const transcription = response.results
-      .map(result => result.alternatives[0].transcript)
+      .map((result: any) => result.alternatives[0].transcript)
       .join('\n')
     res.send(`Transcription: ${transcription}`)
   } catch (error) {
@@ -43,7 +43,7 @@ app.post('/transcribe', async (req, res) => {
   }
 })
 
-app.get('/', (req, res) => {
+app.get('/', (req: any, res: any) => {
   res.send('Hello, World!')
 })
 
