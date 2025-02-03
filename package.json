@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "dev": "nodemon --exec ts-node src/index.ts"
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "lint": "eslint './**/*.{ts,tsx}'",
+    "lint:fix": "eslint './**/*.{ts,tsx}' --fix",
+    "format": "prettier --write './**/*.{ts,tsx}'"
   },
   "keywords": [],
   "author": "",
@@ -13,13 +16,23 @@
   "dependencies": {
     "@google-cloud/speech": "^6.7.0",
     "cors": "^2.8.5",
+    "eslint-plugin-prettier": "^5.2.3",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.0",
+    "eslint": "^9.19.0",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
     "nodemon": "^3.1.9",
+    "prettier": "^3.4.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.22.0"
   }
 }
