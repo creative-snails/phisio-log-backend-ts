@@ -2,8 +2,9 @@ import { protos, SpeechClient } from "@google-cloud/speech";
 import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
-import mongoose from "mongoose";
 import OpenAI from "openai";
+import db from "./startup/db";
+db();
 
 const app = express();
 const port = 4000;
@@ -12,28 +13,18 @@ app.use(cors());
 app.use(express.json()); // parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // handle form data
 
-// Connect to MongoDB
-mongoose
-  .connect("mongodb://localhost:27017/phisiologdb")
-  .then(() => {
-    console.log("Connected to MongoDB...");
-  })
-  .catch((err) => {
-    console.error("Error connecting to MongoDB:", err);
-  });
+// const Schema = mongoose.Schema;
+// const TestSchema = new Schema({
+//   name: String,
+// });
 
-const Schema = mongoose.Schema;
-const TestSchema = new Schema({
-  name: String,
-});
+// const TestModel = mongoose.model("Test", TestSchema);
 
-const TestModel = mongoose.model("Test", TestSchema);
-
-app.get("/test-db", async (req: Request, res: Response) => {
-  const testDoc = new TestModel({ name: "Test Document" });
-  await testDoc.save();
-  res.send("Hello, World! Document saved.");
-});
+// app.get("/test-db", async (req: Request, res: Response) => {
+//   const testDoc = new TestModel({ name: "Test Document" });
+//   await testDoc.save();
+//   res.send("Hello, World! Document saved.");
+// });
 
 // Initialize Google Speech-to-Text client
 const googleClient = new SpeechClient({

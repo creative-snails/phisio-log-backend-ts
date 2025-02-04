@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node --env-file=.env src/index.ts",
-    "dev": "nodemon --exec 'node --env-file=.env -r ts-node/register src/index.ts'",
+    "start": "ts-node --env-file=.env index.ts",
+    "dev": "nodemon --exec 'node --env-file=.env -r ts-node/register index.ts'",
+    "tsc": "tsc",
     "lint": "eslint './**/*.{ts,tsx}'",
     "lint:fix": "eslint './**/*.{ts,tsx}' --fix",
     "format": "prettier --write './**/*.{ts,tsx}'"
