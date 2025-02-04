@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "dev": "nodemon --exec ts-node src/index.ts",
+    "start": "ts-node --env-file=.env src/index.ts",
+    "dev": "nodemon --exec 'node --env-file=.env -r ts-node/register src/index.ts'",
     "lint": "eslint './**/*.{ts,tsx}'",
     "lint:fix": "eslint './**/*.{ts,tsx}' --fix",
     "format": "prettier --write './**/*.{ts,tsx}'"
@@ -18,7 +18,9 @@
     "cors": "^2.8.5",
     "eslint-plugin-prettier": "^5.2.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "mongoose": "^8.9.6",
+    "openai": "^4.82.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
