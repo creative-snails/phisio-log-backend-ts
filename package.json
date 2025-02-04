@@ -20,6 +20,7 @@
     "eslint-plugin-prettier": "^5.2.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "express": "^4.21.2",
+    "joi": "^17.13.3",
     "mongoose": "^8.9.6",
     "openai": "^4.82.0"
   },
