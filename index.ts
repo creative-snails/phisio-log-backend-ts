@@ -4,6 +4,7 @@ import express, { Request, Response } from "express";
 import fs from "fs";
 import OpenAI from "openai";
 import db from "./startup/db";
+
 db();
 
 const app = express();

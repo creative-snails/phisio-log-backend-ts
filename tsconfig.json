@@ -4,6 +4,7 @@
     "module": "commonjs",
     "rootDir": "./",
     "strict": true,
+    "resolveJsonModule": true, // the order of this line and the one below it matters
     "esModuleInterop": true
   },
   "include": ["**/*.ts"],
