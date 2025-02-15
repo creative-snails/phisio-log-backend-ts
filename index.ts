@@ -51,7 +51,7 @@ app.post("/chat-user", async (req: Request, res: Response) => {
 
 app.post("/chat-structured", async (req: Request, res: Response) => {
   const completion = await openAIClient.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4",
     messages: [
       {
         role: "system",
@@ -62,10 +62,9 @@ app.post("/chat-structured", async (req: Request, res: Response) => {
         content: userPrompt,
       },
     ],
-    response_format: { type: "json_object" },
+    // response_format: { type: "json_object" },
   });
 
-  // const healthRecord = completion.choices[0].message.content;
   const healthRecord = JSON.parse(completion.choices[0].message.content as string);
 
   res.send({ healthRecord });

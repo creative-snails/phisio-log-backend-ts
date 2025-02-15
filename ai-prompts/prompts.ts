@@ -14,7 +14,7 @@ export const systemPrompt = `
       "description":  "",
       "symptoms": [
           {
-            "name": "value": "",
+            "name": "",
             "startDate": "",
             "duration": ""
           }
@@ -24,11 +24,14 @@ export const systemPrompt = `
       "improvementStatus": "",
       "medicalConsultations": [
           {
-            "consultant": "value": "",
+            "consultant": "",
             "date": "",
             "diagnosis": "",
             "followUpActions": ["Action 1", "Action 2"]
           }
         ],
       "severity": ""
-    }`;
+    }
+
+    If a value was not provided keep the value empty.
+    `;
