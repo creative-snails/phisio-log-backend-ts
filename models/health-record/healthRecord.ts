@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { IMPROVEMENT_STATUS, SEVERITY_TYPES, STATUS_TYPES } from "./healthRecordService";
-import { HealthRecord, HealthRecordUpdate } from "./healthRecordValidation";
+import { HealthRecordType, HealthRecordUpdateType } from "./healthRecordValidation";
 
 const { Schema } = mongoose;
 
@@ -38,7 +38,7 @@ const medicalConsultationSchema = new Schema({
   },
 });
 
-const updateSchema = new Schema<HealthRecordUpdate>(
+const updateSchema = new Schema<HealthRecordUpdateType>(
   {
     description: {
       type: String,
@@ -70,7 +70,7 @@ const updateSchema = new Schema<HealthRecordUpdate>(
   { timestamps: true }
 );
 
-const recordSchema = new Schema<HealthRecord>(
+const recordSchema = new Schema<HealthRecordType>(
   {
     user: {
       type: String,

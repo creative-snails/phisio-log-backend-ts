@@ -17,6 +17,7 @@ const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const fs_1 = __importDefault(require("fs"));
 const openai_1 = __importDefault(require("openai"));
+const prompts_1 = require("./ai-prompts/prompts");
 const db_1 = __importDefault(require("./startup/db"));
 (0, db_1.default)();
 const app = (0, express_1.default)();
@@ -42,13 +43,33 @@ const googleClient = new speech_1.SpeechClient({
 const openAIClient = new openai_1.default({
     apiKey: process.env["OPENAI_API_KEY"],
 });
-app.post("/chat", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post("/chat-user", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const chatCompletion = yield openAIClient.chat.completions.create({
         messages: [{ role: "user", content: req.body.message }],
         model: "gpt-3.5-turbo",
     });
     const myJSON = JSON.parse(chatCompletion.choices[0].message.content);
     res.send({ myJSON });
+}));
+app.post("/chat-structured", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(prompts_1.systemPrompt);
+    const completion = yield openAIClient.chat.completions.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system",
+                content: prompts_1.systemPrompt,
+            },
+            {
+                role: "user",
+                content: prompts_1.userPrompt,
+            },
+        ],
+        response_format: { type: "json_object" },
+    });
+    // const healthRecord = completion.choices[0].message.content;
+    const healthRecord = JSON.parse(completion.choices[0].message.content);
+    res.send({ healthRecord });
 }));
 app.post("/transcribe", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;

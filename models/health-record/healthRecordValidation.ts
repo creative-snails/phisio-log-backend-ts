@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import {
   IMPROVEMENT_STATUS,
   MAX_CHAR_LONG,
@@ -10,7 +10,7 @@ import {
   STATUS_TYPES,
 } from "./healthRecordService";
 
-const symptomValidationSchema = z.object({
+const Symptoms = z.object({
   name: z
     .string()
     .trim()
@@ -26,7 +26,7 @@ const symptomValidationSchema = z.object({
     ),
 });
 
-const medicalConsultationValidationSchema = z.object({
+const MedicalConsultation = z.object({
   consultant: z
     .string()
     .trim()
@@ -49,14 +49,14 @@ const medicalConsultationValidationSchema = z.object({
     .default([]),
 });
 
-export const healthRecordUpdateValidationSchema = z.object({
+export const HealthRecordUpdate = z.object({
   description: z
     .string()
     .trim()
     .min(2, minValidationMessage("Description", 2))
     .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG))
     .optional(),
-  symptoms: z.array(symptomValidationSchema).default([]),
+  symptoms: z.array(Symptoms).default([]),
   status: z.enum(STATUS_TYPES).optional(),
   treatmentsTried: z
     .array(
@@ -68,12 +68,12 @@ export const healthRecordUpdateValidationSchema = z.object({
     )
     .default([]),
   improvementStatus: z.enum(IMPROVEMENT_STATUS).default("stable"),
-  medicalConsultations: z.array(medicalConsultationValidationSchema).default([]),
+  medicalConsultations: z.array(MedicalConsultation).default([]),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });
 
-export const healthRecordValidationSchema = z.object({
+export const HealthRecord = z.object({
   user: z
     .string()
     .trim()
@@ -85,7 +85,7 @@ export const healthRecordValidationSchema = z.object({
     .trim()
     .min(2, minValidationMessage("Description", 2))
     .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG)),
-  symptoms: z.array(symptomValidationSchema).min(1, "At least one symptom is required"),
+  symptoms: z.array(Symptoms).min(1, "At least one symptom is required"),
   status: z.enum(STATUS_TYPES).default("open"),
   treatmentsTried: z
     .array(
@@ -97,12 +97,12 @@ export const healthRecordValidationSchema = z.object({
     )
     .default([]),
   improvementStatus: z.enum(IMPROVEMENT_STATUS).default("stable"),
-  medicalConsultations: z.array(medicalConsultationValidationSchema).default([]),
+  medicalConsultations: z.array(MedicalConsultation).default([]),
   severity: z.enum(SEVERITY_TYPES),
-  updates: z.array(healthRecordUpdateValidationSchema).default([]),
+  updates: z.array(HealthRecordUpdate).default([]),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });
 
-export type HealthRecordUpdate = z.infer<typeof healthRecordUpdateValidationSchema>;
-export type HealthRecord = z.infer<typeof healthRecordValidationSchema>;
+export type HealthRecordUpdateType = z.infer<typeof HealthRecordUpdate>;
+export type HealthRecordType = z.infer<typeof HealthRecord>;

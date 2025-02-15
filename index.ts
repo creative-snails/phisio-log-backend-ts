@@ -3,6 +3,7 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
 import OpenAI from "openai";
+import { systemPrompt, userPrompt } from "./ai-prompts/prompts";
 import db from "./startup/db";
 
 db();
@@ -37,7 +38,7 @@ const openAIClient = new OpenAI({
   apiKey: process.env["OPENAI_API_KEY"],
 });
 
-app.post("/chat", async (req: Request, res: Response) => {
+app.post("/chat-user", async (req: Request, res: Response) => {
   const chatCompletion = await openAIClient.chat.completions.create({
     messages: [{ role: "user", content: req.body.message }],
     model: "gpt-3.5-turbo",
@@ -46,6 +47,28 @@ app.post("/chat", async (req: Request, res: Response) => {
   const myJSON = JSON.parse(chatCompletion.choices[0].message.content as string);
 
   res.send({ myJSON });
+});
+
+app.post("/chat-structured", async (req: Request, res: Response) => {
+  const completion = await openAIClient.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  // const healthRecord = completion.choices[0].message.content;
+  const healthRecord = JSON.parse(completion.choices[0].message.content as string);
+
+  res.send({ healthRecord });
 });
 
 app.post("/transcribe", async (req: Request, res: Response) => {
