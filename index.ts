@@ -3,6 +3,7 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
 import OpenAI from "openai";
+// import baseHealRecord from "./ai-prompts/default.json";
 import { systemPrompt, userPrompt } from "./ai-prompts/prompts";
 import db from "./startup/db";
 
