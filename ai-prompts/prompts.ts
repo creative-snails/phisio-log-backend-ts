@@ -46,9 +46,10 @@ export const systemPrompt = `
 export const newSystemPrompt = `
   Based on the user description, generate a JSON object matching the Zod schema.
   - For fields: status, treatmentsTried, and severity, interpret the description and pick a value from their respective accepted values.
-  - Extract at least one symptom.
-  - Summarize and clean up the description before adding it to the JSON.
+  - symptoms: Extract at least one symptom. If the symptoms are not similar, don't group them, create separate entries instead.
+  - description: Summarize, clean up, and fix any mistakes before adding it to the JSON.
   - If data is missing, leave fields empty. Ignore missing details.
+  - Be aware that today's date is ${new Date()}
 
   Zod Schema
   const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;

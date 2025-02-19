@@ -32,3 +32,7 @@ mongod --config ~/mongodb.conf
 ```
 
 This should work reliably even after system restarts, and it's a more secure approach since it doesn't require modifying system directories.
+
+---
+
+If {"exitCode":48} it means that MongoDB is already running on the default port (27017).

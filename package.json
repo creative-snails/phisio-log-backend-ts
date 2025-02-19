@@ -5,6 +5,7 @@
   "scripts": {
     "start": "ts-node --env-file=.env index.ts",
     "dev": "nodemon --exec 'node --env-file=.env -r ts-node/register index.ts'",
+    "db": "mongod --config ~/mongodb.conf",
     "tsc": "tsc",
     "lint": "eslint './**/*.{ts,tsx}'",
     "lint:fix": "eslint './**/*.{ts,tsx}' --fix",

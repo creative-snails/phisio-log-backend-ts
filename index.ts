@@ -76,16 +76,18 @@ async function chat(messages: Message[]) {
 app.post("/chat-structured", async (req: Request, res: Response) => {
   const conversionId = req.body.conversationId || "123";
   history[conversionId].push({ role: "user", content: req.body.message });
+  let message = "";
 
   let result = await chat(history[conversionId]);
   let healthRecord: Partial<HealthRecordType> = JSON.parse(result);
-  let newPrompt = `This was your output, update it to iclude the new requirements: ${result}`;
+  let newPrompt = `This was your output, update it to iclude the new requirements. Don't update single value entries that were already generated: ${result}`;
 
   console.log(history[conversionId].length);
 
+  message = "You provided only one symptom, do you have more sympotms that can be added to the record.";
   if (history[conversionId].length > 2 && (healthRecord.symptoms?.length ?? 0) <= 1) {
-    newPrompt +=
-      "You provided only one symptom, do you have anything more sympotms that can be added to the record. You don't need to update other entries that were already generated.";
+    message = "";
+    newPrompt += "Extract any additional symptoms detected and add them to the array.";
 
     result = await chat(history[conversionId]);
     healthRecord = JSON.parse(result);
@@ -110,7 +112,7 @@ app.post("/chat-structured", async (req: Request, res: Response) => {
 
   history[conversionId].push({ role: "system", content: newPrompt });
 
-  res.send({ healthRecord });
+  res.send({ message, healthRecord });
 });
 
 app.post("/transcribe", async (req: Request, res: Response) => {

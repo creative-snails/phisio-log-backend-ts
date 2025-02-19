@@ -73,13 +73,15 @@ app.post("/chat-structured", (req, res) => __awaiter(void 0, void 0, void 0, fun
     var _a, _b, _c;
     const conversionId = req.body.conversationId || "123";
     history[conversionId].push({ role: "user", content: req.body.message });
+    let message = "";
     let result = yield chat(history[conversionId]);
     let healthRecord = JSON.parse(result);
-    let newPrompt = `This was your output, update it to iclude the new requirements: ${result}`;
+    let newPrompt = `This was your output, update it to iclude the new requirements. Don't update single value entries that were already generated: ${result}`;
     console.log(history[conversionId].length);
+    message = "You provided only one symptom, do you have more sympotms that can be added to the record.";
     if (history[conversionId].length > 2 && ((_b = (_a = healthRecord.symptoms) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0) <= 1) {
-        newPrompt +=
-            "You provided only one symptom, do you have anything more sympotms that can be added to the record. You don't need to update other entries that were already generated.";
+        message = "";
+        newPrompt += "Extract any additional symptoms detected and add them to the array.";
         result = yield chat(history[conversionId]);
         healthRecord = JSON.parse(result);
         (_c = healthRecord.symptoms) === null || _c === void 0 ? void 0 : _c.forEach((s) => {
@@ -100,7 +102,7 @@ app.post("/chat-structured", (req, res) => __awaiter(void 0, void 0, void 0, fun
         healthRecord = dbHealthRecord;
     }
     history[conversionId].push({ role: "system", content: newPrompt });
-    res.send({ healthRecord });
+    res.send({ message, healthRecord });
 }));
 app.post("/transcribe", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
