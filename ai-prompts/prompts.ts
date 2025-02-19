@@ -42,3 +42,43 @@ export const systemPrompt = `
 
     If a value was not provided keep the value empty.
     `;
+
+export const newSystemPrompt = `
+  Based on the user description, generate a JSON object matching the Zod schema.
+  - For fields: status, treatmentsTried, and severity, interpret the description and pick a value from their respective accepted values.
+  - Extract at least one symptom.
+  - Summarize and clean up the description before adding it to the JSON.
+  - If data is missing, leave fields empty. Ignore missing details.
+
+  Zod Schema
+  const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;
+  const SEVERITY_TYPES = ["mild", "moderate", "severe", "variable"] as const;
+
+  const Symptoms = z.object({
+    name: z.string().trim().min(1).max(MAX_CHAR_MEDIUM),
+    startDate: z.date().max(new Date()),
+  });
+
+  export const HealthRecord = z.object({
+    description: z.string().trim().min(2).max(MAX_CHAR_LONG),
+    symptoms: z.array(Symptoms).min(1),
+    status: z.enum(STATUS_TYPES).default("open"),
+    treatmentsTried: z.array(z.string().trim().min(2).max(MAX_CHAR_LONG)).default([]),
+    improvementStatus: z.enum(IMPROVEMENT_STATUS).default("stable"),
+    severity: z.enum(SEVERITY_TYPES),
+  });
+
+  Expected JSON Output sturcture:
+  {
+    "description": "",
+    "symptoms": [
+      {
+        name: "",
+        startDate: ",
+      }
+    ],
+    "treatmentsTried": [],
+    "improvementStatus": "",
+    "severity": ""
+  }
+  `;

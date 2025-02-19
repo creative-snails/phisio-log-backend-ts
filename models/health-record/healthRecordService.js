@@ -4,8 +4,8 @@ exports.MAX_CHAR_LONG = exports.MAX_CHAR_MEDIUM = exports.MAX_CHAR_SHORT = expor
 exports.maxValidationMessage = maxValidationMessage;
 exports.minValidationMessage = minValidationMessage;
 exports.STATUS_TYPES = ["open", "closed", "in-progress"];
-exports.IMPROVEMENT_STATUS = ["improving", "stable", "worsening"];
-exports.SEVERITY_TYPES = ["mild", "moderate", "severe"];
+exports.IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "varialbe"];
+exports.SEVERITY_TYPES = ["mild", "moderate", "severe", "varialbe"];
 exports.MAX_CHAR_SHORT = 100;
 exports.MAX_CHAR_MEDIUM = 1000;
 exports.MAX_CHAR_LONG = 10000;

@@ -17,6 +17,7 @@ const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const fs_1 = __importDefault(require("fs"));
 const openai_1 = __importDefault(require("openai"));
+// import baseHealRecord from "./ai-prompts/default.json";
 const prompts_1 = require("./ai-prompts/prompts");
 const db_1 = __importDefault(require("./startup/db"));
 (0, db_1.default)();
@@ -51,24 +52,35 @@ app.post("/chat-user", (req, res) => __awaiter(void 0, void 0, void 0, function*
     const myJSON = JSON.parse(chatCompletion.choices[0].message.content);
     res.send({ myJSON });
 }));
-app.post("/chat-structured", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(prompts_1.systemPrompt);
-    const completion = yield openAIClient.chat.completions.create({
-        model: "gpt-4o-2024-08-06",
-        messages: [
-            {
-                role: "system",
-                content: prompts_1.systemPrompt,
-            },
-            {
-                role: "user",
-                content: prompts_1.userPrompt,
-            },
-        ],
-        response_format: { type: "json_object" },
+const history = {
+    "123": [{ role: "system", content: prompts_1.newSystemPrompt }],
+};
+// model: "gpt-4",
+function chat(messages) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const completion = yield openAIClient.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: messages,
+            response_format: { type: "json_object" },
+        });
+        // console.log(completion.choices[0].message);
+        return completion.choices[0].message.content;
     });
-    // const healthRecord = completion.choices[0].message.content;
-    const healthRecord = JSON.parse(completion.choices[0].message.content);
+}
+app.post("/chat-structured", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const conversionId = req.body.conversationId || "123";
+    history[conversionId].push({ role: "user", content: req.body.message });
+    let result = yield chat(history[conversionId]);
+    let healthRecord = JSON.parse(result);
+    let newPrompt = `This was your output, update it to iclude the new requirements: ${result}`;
+    if (history[conversionId].length > 2 && ((_a = healthRecord.symptoms) === null || _a === void 0 ? void 0 : _a.length) == 1) {
+        newPrompt +=
+            "You provided only one symptom, do you have anything more sympotms that can be added to the record. You don't need to update other entries that were already generated.";
+        result = yield chat(history[conversionId]);
+        healthRecord = JSON.parse(result);
+    }
+    history[conversionId].push({ role: "system", content: newPrompt });
     res.send({ healthRecord });
 }));
 app.post("/transcribe", (req, res) => __awaiter(void 0, void 0, void 0, function* () {

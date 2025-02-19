@@ -4,7 +4,8 @@ import express, { Request, Response } from "express";
 import fs from "fs";
 import OpenAI from "openai";
 // import baseHealRecord from "./ai-prompts/default.json";
-import { systemPrompt, userPrompt } from "./ai-prompts/prompts";
+import { newSystemPrompt } from "./ai-prompts/prompts";
+import { HealthRecordType } from "./models/health-record/healthRecordValidation";
 import db from "./startup/db";
 
 db();
@@ -50,23 +51,44 @@ app.post("/chat-user", async (req: Request, res: Response) => {
   res.send({ myJSON });
 });
 
-app.post("/chat-structured", async (req: Request, res: Response) => {
+type Message = {
+  role: "system" | "user";
+  content: string;
+};
+
+const history: Record<string, Message[]> = {
+  "123": [{ role: "system", content: newSystemPrompt }],
+};
+
+// model: "gpt-4",
+async function chat(messages: Message[]) {
   const completion = await openAIClient.chat.completions.create({
-    model: "gpt-4",
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-    // response_format: { type: "json_object" },
+    model: "gpt-3.5-turbo",
+    messages: messages,
+    response_format: { type: "json_object" },
   });
 
-  const healthRecord = JSON.parse(completion.choices[0].message.content as string);
+  // console.log(completion.choices[0].message);
+  return completion.choices[0].message.content as string;
+}
+
+app.post("/chat-structured", async (req: Request, res: Response) => {
+  const conversionId = req.body.conversationId || "123";
+  history[conversionId].push({ role: "user", content: req.body.message });
+
+  let result = await chat(history[conversionId]);
+  let healthRecord: Partial<HealthRecordType> = JSON.parse(result);
+  let newPrompt = `This was your output, update it to iclude the new requirements: ${result}`;
+
+  if (history[conversionId].length > 2 && healthRecord.symptoms?.length == 1) {
+    newPrompt +=
+      "You provided only one symptom, do you have anything more sympotms that can be added to the record. You don't need to update other entries that were already generated.";
+
+    result = await chat(history[conversionId]);
+    healthRecord = JSON.parse(result);
+  }
+
+  history[conversionId].push({ role: "system", content: newPrompt });
 
   res.send({ healthRecord });
 });
