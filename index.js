@@ -19,6 +19,8 @@ const fs_1 = __importDefault(require("fs"));
 const openai_1 = __importDefault(require("openai"));
 // import baseHealRecord from "./ai-prompts/default.json";
 const prompts_1 = require("./ai-prompts/prompts");
+const healthRecord_1 = __importDefault(require("./models/health-record/healthRecord"));
+const healthRecordValidation_1 = require("./models/health-record/healthRecordValidation");
 const db_1 = __importDefault(require("./startup/db"));
 (0, db_1.default)();
 const app = (0, express_1.default)();
@@ -68,17 +70,34 @@ function chat(messages) {
     });
 }
 app.post("/chat-structured", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b, _c;
     const conversionId = req.body.conversationId || "123";
     history[conversionId].push({ role: "user", content: req.body.message });
     let result = yield chat(history[conversionId]);
     let healthRecord = JSON.parse(result);
     let newPrompt = `This was your output, update it to iclude the new requirements: ${result}`;
-    if (history[conversionId].length > 2 && ((_a = healthRecord.symptoms) === null || _a === void 0 ? void 0 : _a.length) == 1) {
+    console.log(history[conversionId].length);
+    if (history[conversionId].length > 2 && ((_b = (_a = healthRecord.symptoms) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0) <= 1) {
         newPrompt +=
             "You provided only one symptom, do you have anything more sympotms that can be added to the record. You don't need to update other entries that were already generated.";
         result = yield chat(history[conversionId]);
         healthRecord = JSON.parse(result);
+        (_c = healthRecord.symptoms) === null || _c === void 0 ? void 0 : _c.forEach((s) => {
+            if (s.startDate)
+                s.startDate = new Date(s.startDate);
+            else
+                delete s.startDate;
+        });
+        try {
+            healthRecordValidation_1.Z_HealthRecord.parse(healthRecord);
+            console.log("Validation successfull!");
+        }
+        catch (error) {
+            console.log("Validation failed: ", error);
+        }
+        const dbHealthRecord = new healthRecord_1.default(Object.assign({}, healthRecord));
+        yield dbHealthRecord.save();
+        healthRecord = dbHealthRecord;
     }
     history[conversionId].push({ role: "system", content: newPrompt });
     res.send({ healthRecord });

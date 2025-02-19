@@ -1,6 +1,6 @@
 export const STATUS_TYPES = ["open", "closed", "in-progress"] as const;
-export const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "varialbe"] as const;
-export const SEVERITY_TYPES = ["mild", "moderate", "severe", "varialbe"] as const;
+export const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;
+export const SEVERITY_TYPES = ["mild", "moderate", "severe", "variable"] as const;
 
 export const MAX_CHAR_SHORT = 100;
 export const MAX_CHAR_MEDIUM = 1000;

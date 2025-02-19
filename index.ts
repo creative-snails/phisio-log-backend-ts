@@ -5,7 +5,8 @@ import fs from "fs";
 import OpenAI from "openai";
 // import baseHealRecord from "./ai-prompts/default.json";
 import { newSystemPrompt } from "./ai-prompts/prompts";
-import { HealthRecordType } from "./models/health-record/healthRecordValidation";
+import HealthRecord from "./models/health-record/healthRecord";
+import { HealthRecordType, Z_HealthRecord } from "./models/health-record/healthRecordValidation";
 import db from "./startup/db";
 
 db();
@@ -80,12 +81,31 @@ app.post("/chat-structured", async (req: Request, res: Response) => {
   let healthRecord: Partial<HealthRecordType> = JSON.parse(result);
   let newPrompt = `This was your output, update it to iclude the new requirements: ${result}`;
 
-  if (history[conversionId].length > 2 && healthRecord.symptoms?.length == 1) {
+  console.log(history[conversionId].length);
+
+  if (history[conversionId].length > 2 && (healthRecord.symptoms?.length ?? 0) <= 1) {
     newPrompt +=
       "You provided only one symptom, do you have anything more sympotms that can be added to the record. You don't need to update other entries that were already generated.";
 
     result = await chat(history[conversionId]);
     healthRecord = JSON.parse(result);
+
+    healthRecord.symptoms?.forEach((s) => {
+      if (s.startDate) s.startDate = new Date(s.startDate);
+      else delete s.startDate;
+    });
+
+    try {
+      Z_HealthRecord.parse(healthRecord);
+      console.log("Validation successfull!");
+    } catch (error) {
+      console.log("Validation failed: ", error);
+    }
+
+    const dbHealthRecord = new HealthRecord({ ...healthRecord });
+    await dbHealthRecord.save();
+
+    healthRecord = dbHealthRecord;
   }
 
   history[conversionId].push({ role: "system", content: newPrompt });

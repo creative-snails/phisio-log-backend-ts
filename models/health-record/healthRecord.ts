@@ -10,10 +10,7 @@ const symptomSchema = new Schema({
     required: true,
     trim: true,
   },
-  startDate: {
-    type: Date,
-    required: true,
-  },
+  startDate: Date,
   duration: String,
 });
 
@@ -117,6 +114,6 @@ const recordSchema = new Schema<HealthRecordType>(
   { timestamps: true }
 );
 
-const Record = mongoose.model("Record", recordSchema);
+const HealthRecord = mongoose.model("Record", recordSchema);
 
-export default Record;
+export default HealthRecord;
