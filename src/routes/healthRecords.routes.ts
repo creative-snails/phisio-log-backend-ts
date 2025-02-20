@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { newSystemPrompt } from "../ai-prompts/prompts";
+import { initialSystemPrompt } from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
 import chat, { Message } from "../services/genAI";
@@ -8,7 +8,7 @@ import chat, { Message } from "../services/genAI";
 const router = express.Router();
 
 const history: Record<string, Message[]> = {
-  "123": [{ role: "system", content: newSystemPrompt }],
+  "123": [{ role: "system", content: initialSystemPrompt }],
 };
 
 router.post("/", async (req: Request, res: Response) => {

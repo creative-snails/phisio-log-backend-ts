@@ -4,7 +4,7 @@ export const initialPrompt =
 export const userPrompt =
   "I have some pain in the neck and in the shoulders and I think it was due to some old injury and probably unhealthy sitting positions and maybe also lack of workout so I have been trying to go to the gym more often and do some stretches and it's been improving but it's never gone so sometimes it's strong and sometimes it is more bearable.";
 
-export const newSystemPrompt = `
+export const initialSystemPrompt = `
   Based on the user description, generate a JSON object matching the Zod schema.
   - For fields: status, treatmentsTried, and severity, interpret the description and pick a value from their respective accepted values.
   - symptoms: Extract at least one symptom. If the symptoms are not similar, don't group them, create separate entries instead.
