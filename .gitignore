@@ -1,3 +1,4 @@
 node_modules
+dist
 phisiolog-service-account.json
 .env

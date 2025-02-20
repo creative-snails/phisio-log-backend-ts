@@ -3,7 +3,6 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
 import OpenAI from "openai";
-// import baseHealRecord from "./ai-prompts/default.json";
 import { newSystemPrompt } from "./ai-prompts/prompts";
 import HealthRecord from "./models/health-record/healthRecord";
 import { HealthRecordType, Z_HealthRecord } from "./models/health-record/healthRecordValidation";
@@ -17,19 +16,6 @@ const port = 4000;
 app.use(cors());
 app.use(express.json()); // parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // handle form data
-
-// const Schema = mongoose.Schema;
-// const TestSchema = new Schema({
-//   name: String,
-// });
-
-// const TestModel = mongoose.model("Test", TestSchema);
-
-// app.get("/test-db", async (req: Request, res: Response) => {
-//   const testDoc = new TestModel({ name: "Test Document" });
-//   await testDoc.save();
-//   res.send("Hello, World! Document saved.");
-// });
 
 // Initialize Google Speech-to-Text client
 const googleClient = new SpeechClient({
