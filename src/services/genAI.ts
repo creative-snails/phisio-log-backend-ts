@@ -10,7 +10,16 @@ export type Message = {
   content: string;
 };
 
-const chat = async (messages: Message[]) => {
+export const textGen = async (messages: Message[]) => {
+  const completion = await openAIClient.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: messages,
+  });
+
+  return completion.choices[0].message.content as string;
+};
+
+export const jsonGen = async (messages: Message[]) => {
   const completion = await openAIClient.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages: messages,
@@ -19,5 +28,3 @@ const chat = async (messages: Message[]) => {
 
   return completion.choices[0].message.content as string;
 };
-
-export default chat;
