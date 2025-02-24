@@ -1,4 +1,5 @@
 import { Request, Response, Router } from "express";
+import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
 import { initialSystemPrompt } from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
@@ -43,6 +44,7 @@ router.post("/", async (req: Request, res: Response) => {
     let newSystemPrompt = "";
     let healthRecord: Partial<HealthRecordType> = {};
     const conversation = conversations.get(req.body.conversationId) || createNewConversation();
+    conversation.lastAccessed = Date.now();
 
     conversation.history.push({ role: "user", content: req.body.message });
 
@@ -160,3 +162,23 @@ router.post("/temp", async (req: Request, res: Response) => {
 });
 
 export default router;
+
+const cleanup = () => {
+  const MAX_AGE = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  try {
+    conversations.forEach((conversation, id) => {
+      if (now - conversation.lastAccessed > MAX_AGE) conversations.delete(id);
+    });
+    console.log("Cleanup completed successfully");
+  } catch (error) {
+    console.log("Cleanup failed: ", error);
+  }
+};
+
+// Runs at the start of every hour
+schedule("0 * * * *", cleanup, {
+  scheduled: true,
+  timezone: "UTC",
+});
