@@ -29,7 +29,7 @@ router.post("/", async (req: Request, res: Response) => {
     const conversionId = req.body.conversationId || "123";
     history[conversionId].push({ role: "user", content: req.body.message });
     let message = "";
-    let newPrompt = "";
+    let newSystemPrompt = "";
 
     const result = await jsonGen(history[conversionId]);
     let healthRecord: Partial<HealthRecordType> = JSON.parse(result);
@@ -40,13 +40,13 @@ router.post("/", async (req: Request, res: Response) => {
 
     if (validationResult.success && validationResult.systemPrompt) {
       message = validationResult?.userPrompt ?? "";
-      newPrompt += validationResult?.systemPrompt ?? "";
+      newSystemPrompt += validationResult?.systemPrompt ?? "";
 
       // result = await jsonGen(history[conversionId]);
       // healthRecord = JSON.parse(result);
     }
 
-    newPrompt = `This was your output, update it to iclude the new requirements.
+    newSystemPrompt += `This was your output, update it to iclude the new requirements.
                 Don't update single value entries that were already generated: ${result}`;
 
     if (validationResult.success) {
@@ -76,7 +76,7 @@ router.post("/", async (req: Request, res: Response) => {
       healthRecord = dbHealthRecord;
     }
 
-    history[conversionId].push({ role: "system", content: newPrompt });
+    history[conversionId].push({ role: "system", content: newSystemPrompt });
 
     res.status(200).json({ message, healthRecord });
   } catch (error: unknown) {

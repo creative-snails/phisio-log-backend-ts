@@ -40,7 +40,33 @@ export const initialSystemPrompt = `
       }
     ],
     "treatmentsTried": [],
+    "medicalConsultations": [],
     "improvementStatus": "",
     "severity": ""
+  }
+  `;
+
+export const consultationsPrompt = `
+  Based on the user input, extract the relavent information about the consultations and append them to the "medicalConsultations" array within the main health record object.
+  - consultant: Extract the name of the consultant.
+  - date: Extract the date of the consultation.
+  - diagnosis: Summarize and clean up the diagnosis provided.
+  - followUpActions: Extract any follow-up actions recommended. If there are multiple, list them separately.
+  - If data is missing, leave fields empty. Ignore missing details.
+
+  Zod Schema
+  const Z_MedicalConsultation = z.object({
+    consultant: z.string().trim().min(2).max(MAX_CHAR_SHORT),
+    date: z.date().max(new Date(), "Consultation date cannot be in the future"),
+    diagnosis: z.string().trim().min(1, "Diagnosis is required").max(MAX_CHAR_LONG),
+    followUpActions: z.array(z.string().trim().min(2).max(MAX_CHAR_LONG)).default([]),
+  });
+
+  Expected JSON Output structure that you will add to the "medicalConsultations" array:
+  {
+    "consultant": "",
+    "date": "",
+    "diagnosis": "",
+    "followUpActions": []
   }
   `;

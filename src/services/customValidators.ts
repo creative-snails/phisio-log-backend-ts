@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { userPrompt } from "../ai-prompts/prompts";
+import { consultationsPrompt, userPrompt } from "../ai-prompts/prompts";
 import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
 import { Message, textGen } from "./genAI";
 
@@ -23,11 +23,31 @@ export async function validateHealthRecord(
     else delete s.startDate;
   });
 
-  if (history.length > 2 && (healthRecord.symptoms?.length ?? 0) <= 1) {
-    newUserPrompt = "You provided only one symptom, do you have more sympotms that can be added to the record.";
-    systemPrompt = "Extract any additional symptoms detected and add them to the array.";
+  healthRecord.medicalConsultations?.forEach((c) => {
+    if (c.date) c.date = new Date(c.date);
+  });
 
-    return { success: true, systemPrompt, userPrompt: newUserPrompt };
+  console.log(history.length);
+  if (history.length >= 2) {
+    console.log(healthRecord);
+    console.log("here");
+    if ((healthRecord.symptoms?.length ?? 0) <= 1) {
+      newUserPrompt = "You provided only one symptom, do you have more sympotms that can be added to the record.";
+      systemPrompt = "Extract any additional symptoms detected and add them to the array.";
+
+      return { success: true, systemPrompt, userPrompt: newUserPrompt };
+    }
+    if (!healthRecord.treatmentsTried?.length) {
+      newUserPrompt = "Have you tried any treatments by yourself to deal with your condition?";
+      systemPrompt = "Extract any tried treatments provide by the user";
+
+      return { success: true, systemPrompt, userPrompt: newUserPrompt };
+    }
+    if (!healthRecord.medicalConsultations?.length) {
+      newUserPrompt =
+        "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?";
+      return { success: true, systemPrompt: consultationsPrompt, userPrompt: newUserPrompt };
+    }
   }
 
   try {
