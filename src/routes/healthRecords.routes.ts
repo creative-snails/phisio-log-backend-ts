@@ -1,4 +1,5 @@
 import { Request, Response, Router } from "express";
+import { v4 as uuidv4 } from "uuid";
 import { initialSystemPrompt } from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType } from "../models/health-record/healthRecordValidation";
@@ -8,11 +9,80 @@ import { jsonGen, Message } from "../services/genAI";
 
 const router = Router();
 
+type Conversation = {
+  id: string;
+  history: Message[];
+  lastAccessed: number;
+  requestedData: {
+    additionalSymptoms: boolean;
+    treatmentsTried: boolean;
+    medicalConsultations: boolean;
+  };
+};
+
+const conversations = new Map<string, Conversation>();
+
+const createNewConversation = (): Conversation => {
+  const conversation: Conversation = {
+    id: uuidv4(),
+    history: [{ role: "system", content: initialSystemPrompt }],
+    lastAccessed: Date.now(),
+    requestedData: {
+      additionalSymptoms: false,
+      treatmentsTried: false,
+      medicalConsultations: false,
+    },
+  };
+
+  conversations.set(conversation.id, conversation);
+  return conversation;
+};
+
+router.post("/", async (req: Request, res: Response) => {
+  try {
+    const conversation = conversations.get(req.body.conversationId) || createNewConversation();
+    console.log(conversation);
+
+    conversation.history.push({ role: "user", content: req.body.message });
+
+    const generatedJSON = await jsonGen(conversation.history);
+    const healthRecord: Partial<HealthRecordType> = JSON.parse(generatedJSON);
+    const validationResult = await validateHealthRecord(healthRecord, conversation.history);
+
+    console.log(validationResult);
+
+    let newSystemPrompt = `This was your output, update it to iclude the new requirements.
+                Don't update single value entries that were already generated if not needed: ${generatedJSON}`;
+
+    if (validationResult.success) {
+      newSystemPrompt += validationResult?.systemPrompt ?? "";
+      conversation.history.push({ role: "system", content: newSystemPrompt });
+
+      const savedHealthRecord = new HealthRecord({ ...healthRecord });
+      await savedHealthRecord.save();
+
+      res.status(201).json({
+        conversationId: conversation.id,
+        healthRecordId: savedHealthRecord._id,
+        message: validationResult.userPrompt,
+        healthRecord: savedHealthRecord,
+      });
+    } else {
+      res.status(200).json({
+        conversationId: conversation.id,
+        message: validationResult.userPrompt,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
+
 const history: Record<string, Message[]> = {
   "123": [{ role: "system", content: initialSystemPrompt }],
 };
 
-router.post("/", async (req: Request, res: Response) => {
+router.post("/temp", async (req: Request, res: Response) => {
   try {
     // in the real scenario we'll transcribe and audio file
     // const audioFilePath = "./transcript-test-10-seconds.wav";
@@ -47,7 +117,7 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     newSystemPrompt += `This was your output, update it to iclude the new requirements.
-                Don't update single value entries that were already generated: ${result}`;
+                Don't update single value entries that were already generated if not needed: ${result}`;
 
     if (validationResult.success) {
       let dbHealthRecord: HealthRecordType;

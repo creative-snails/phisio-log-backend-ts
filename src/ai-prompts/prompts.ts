@@ -11,6 +11,7 @@ export const initialSystemPrompt = `
   - description: Summarize, clean up, and fix any mistakes before adding it to the JSON.
   - If data is missing, leave fields empty. Ignore missing details.
   - Be aware that today's date is ${new Date()}
+  - Only extract symptoms if they are clearly related to a medical or physical condition. Ignore general statements or non-medical information.
 
   Zod Schema
   const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;
