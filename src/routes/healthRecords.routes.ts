@@ -40,26 +40,26 @@ const createNewConversation = (): Conversation => {
 
 router.post("/", async (req: Request, res: Response) => {
   try {
+    let newSystemPrompt = "";
+    let healthRecord: Partial<HealthRecordType> = {};
     const conversation = conversations.get(req.body.conversationId) || createNewConversation();
-    console.log(conversation);
 
     conversation.history.push({ role: "user", content: req.body.message });
 
     const generatedJSON = await jsonGen(conversation.history);
-    const healthRecord: Partial<HealthRecordType> = JSON.parse(generatedJSON);
+    healthRecord = JSON.parse(generatedJSON);
     const validationResult = await validateHealthRecord(healthRecord, conversation.history);
 
-    console.log(validationResult);
-
-    let newSystemPrompt = `This was your output, update it to iclude the new requirements.
-                Don't update single value entries that were already generated if not needed: ${generatedJSON}`;
+    if (validationResult.userPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.userPrompt });
 
     if (validationResult.success) {
       newSystemPrompt += validationResult?.systemPrompt ?? "";
-      conversation.history.push({ role: "system", content: newSystemPrompt });
 
       const savedHealthRecord = new HealthRecord({ ...healthRecord });
       await savedHealthRecord.save();
+
+      healthRecord = savedHealthRecord;
 
       res.status(201).json({
         conversationId: conversation.id,
@@ -73,6 +73,11 @@ router.post("/", async (req: Request, res: Response) => {
         message: validationResult.userPrompt,
       });
     }
+    newSystemPrompt += `This was your output, update it to iclude the new requirements.
+                Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
+
+    if (validationResult.userPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
+    console.log(conversation);
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
