@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
+import config from "../config";
 
 export default () => {
   mongoose
-    .connect("mongodb://localhost:27017/phisiologdb")
+    .connect(`mongodb://${config.MONGO_HOST}:${config.MONGO_PORT}/${config.MONGO_DB}`)
     .then(() => {
       console.log("Connected to MongoDB...");
     })
