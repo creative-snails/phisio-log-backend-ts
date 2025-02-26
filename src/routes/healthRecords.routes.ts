@@ -40,7 +40,7 @@ const createNewConversation = (): Conversation => {
 
 router.post("/new-record", async (req: Request, res: Response) => {
   try {
-    let newSystemPrompt = "";
+    let systemPrompt = "";
     let healthRecord: Partial<HealthRecordType> = {};
     const { conversationId, message } = req.body;
 
@@ -51,13 +51,13 @@ router.post("/new-record", async (req: Request, res: Response) => {
 
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
-    const validationResult = await validateHealthRecord(healthRecord, conversation.history);
+    const validationResult = await validateHealthRecord(healthRecord);
 
-    if (validationResult.userPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.userPrompt });
+    if (validationResult.assistantPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
-      newSystemPrompt += validationResult?.systemPrompt ?? "";
+      systemPrompt += validationResult?.systemPrompt ?? "";
 
       const savedHealthRecord = new HealthRecord({ ...healthRecord });
       await savedHealthRecord.save();
@@ -67,19 +67,19 @@ router.post("/new-record", async (req: Request, res: Response) => {
       res.status(201).json({
         conversationId: conversation.id,
         healthRecordId: savedHealthRecord._id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
         healthRecord,
       });
     } else {
       res.status(200).json({
         conversationId: conversation.id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
       });
     }
-    newSystemPrompt += `This was your output, update it to iclude the new requirements.
+    systemPrompt += `This was your output, update it to iclude the new requirements.
                 Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
-    if (validationResult.userPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
+    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
@@ -104,10 +104,10 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
 
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
-    const validationResult = await validateHealthRecord(healthRecord, conversation.history);
+    const validationResult = await validateHealthRecord(healthRecord);
 
-    if (validationResult.userPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.userPrompt });
+    if (validationResult.assistantPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
       newSystemPrompt += validationResult?.systemPrompt ?? "";
@@ -120,20 +120,20 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
 
       res.status(200).json({
         conversationId: conversation.id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
         healthRecord,
       });
     } else {
       res.status(200).json({
         conversationId: conversation.id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
       });
     }
 
     newSystemPrompt += `This was your output, update it to iclude the new requirements.
                 Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
-    if (validationResult.userPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
+    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }

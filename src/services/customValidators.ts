@@ -1,38 +1,63 @@
 import { ZodError } from "zod";
-import { consultationsPrompt, userPrompt } from "../ai-prompts/prompts";
+import { consultationsPrompt } from "../ai-prompts/prompts";
 import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
-import { Message, textGen } from "./genAI";
+import { textGen } from "./genAI";
 
 interface ValidationHelathRecordReturn {
   success: boolean;
   systemPrompt?: string;
-  userPrompt?: string;
+  assistantPrompt?: string;
   validationErrors?: Array<{ field: string; message: string }>;
 }
 
+const MINIMUM_SYMPTOMS = 2;
+
 export async function validateHealthRecord(
-  healthRecord: Partial<HealthRecordType>,
-  history: Message[]
+  healthRecord: Partial<HealthRecordType>
 ): Promise<ValidationHelathRecordReturn> {
-  let validationPrompt = "";
-  let systemPrompt = "";
-  let newUserPrompt = userPrompt;
+  // Convert dates to valid dates before handing over to validation
+  healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
+    ...symptom,
+    startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
+  }));
 
-  healthRecord.symptoms?.forEach((s) => {
-    if (s.startDate) s.startDate = new Date(s.startDate);
-    else delete s.startDate;
-  });
-
-  healthRecord.medicalConsultations?.forEach((c) => {
-    if (c.date) c.date = new Date(c.date);
-  });
+  healthRecord.medicalConsultations?.map((consultation) => ({
+    ...consultation,
+    date: consultation.date ? new Date(consultation.date) : new Date(),
+  }));
 
   try {
-    Z_HealthRecord.parse(healthRecord);
+    const validatedRecord = Z_HealthRecord.parse(healthRecord);
     console.log("Validation successful!");
+
+    if (validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {
+      return {
+        success: true,
+        systemPrompt: "Extract any additional symptoms detected and add them to the array.",
+        assistantPrompt: "You provided only one symptom, do you have more sympotms that can be added to the record.",
+      };
+    }
+    if (!validatedRecord.treatmentsTried.length) {
+      return {
+        success: true,
+        systemPrompt: "Extract any tried treatments provide by the user",
+        assistantPrompt: "Have you tried any treatments by yourself to deal with your condition?",
+      };
+    }
+    if (!validatedRecord.medicalConsultations.length) {
+      return {
+        success: true,
+        systemPrompt: consultationsPrompt,
+        assistantPrompt:
+          "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?",
+      };
+    }
+
     return { success: true };
   } catch (error) {
     if (error instanceof ZodError) {
+      let validationPrompt = "";
+
       const validationErrors = error.errors.map((err) => ({
         field: err.path.join("."),
         message: err.message,
@@ -57,33 +82,11 @@ export async function validateHealthRecord(
         invalidFields.forEach((field) => (validationPrompt += `- ${field}\n`));
       }
 
-      newUserPrompt = await textGen([{ role: "user", content: validationPrompt }]);
-
       return {
         success: false,
         validationErrors,
-        userPrompt: newUserPrompt,
+        assistantPrompt: await textGen([{ role: "user", content: validationPrompt }]),
       };
-    }
-  }
-
-  if (history.length > 2) {
-    if ((healthRecord.symptoms?.length ?? 0) <= 1) {
-      newUserPrompt = "You provided only one symptom, do you have more sympotms that can be added to the record.";
-      systemPrompt = "Extract any additional symptoms detected and add them to the array.";
-
-      return { success: true, systemPrompt, userPrompt: newUserPrompt };
-    }
-    if (!healthRecord.treatmentsTried?.length) {
-      newUserPrompt = "Have you tried any treatments by yourself to deal with your condition?";
-      systemPrompt = "Extract any tried treatments provide by the user";
-
-      return { success: true, systemPrompt, userPrompt: newUserPrompt };
-    }
-    if (!healthRecord.medicalConsultations?.length) {
-      newUserPrompt =
-        "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?";
-      return { success: true, systemPrompt: consultationsPrompt, userPrompt: newUserPrompt };
     }
   }
 

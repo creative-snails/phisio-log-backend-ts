@@ -1,8 +1,5 @@
-export const initialPrompt =
+export const initialAssistantPrompt =
   "Please describe your health situation. You can mention symptoms, treatments you've tried, severity, or anything else you think is important.";
-
-export const userPrompt =
-  "I have some pain in the neck and in the shoulders and I think it was due to some old injury and probably unhealthy sitting positions and maybe also lack of workout so I have been trying to go to the gym more often and do some stretches and it's been improving but it's never gone so sometimes it's strong and sometimes it is more bearable.";
 
 export const initialSystemPrompt = `
   Based on the user description, generate a JSON object matching the Zod schema.
