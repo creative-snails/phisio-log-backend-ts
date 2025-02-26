@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { consultationsPrompt } from "../ai-prompts/prompts";
+import prompts from "../ai-prompts/prompts";
 import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
 import { textGen } from "./genAI";
 
@@ -33,30 +33,29 @@ export async function validateHealthRecord(
     if (validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {
       return {
         success: true,
-        systemPrompt: "Extract any additional symptoms detected and add them to the array.",
-        assistantPrompt: "You provided only one symptom, do you have more sympotms that can be added to the record.",
+        assistantPrompt: prompts.symptoms.assistant,
+        systemPrompt: prompts.symptoms.system,
       };
     }
     if (!validatedRecord.treatmentsTried.length) {
       return {
         success: true,
-        systemPrompt: "Extract any tried treatments provide by the user",
-        assistantPrompt: "Have you tried any treatments by yourself to deal with your condition?",
+        assistantPrompt: prompts.treatments.assistant,
+        systemPrompt: prompts.treatments.system,
       };
     }
     if (!validatedRecord.medicalConsultations.length) {
       return {
         success: true,
-        systemPrompt: consultationsPrompt,
-        assistantPrompt:
-          "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?",
+        assistantPrompt: prompts.consultaions.assistant,
+        systemPrompt: prompts.consultaions.system,
       };
     }
 
     return { success: true };
   } catch (error) {
     if (error instanceof ZodError) {
-      let validationPrompt = "";
+      let validationPrompt = prompts.validation;
 
       const validationErrors = error.errors.map((err) => ({
         field: err.path.join("."),
@@ -67,10 +66,6 @@ export async function validateHealthRecord(
       const invalidFields = validationErrors
         .filter((err) => !err.message.includes("Required"))
         .map((err) => `${err.field} (${err.message})`);
-
-      validationPrompt += `Generate a user friendly prompt starting with the below and leveraging
-                         the error messages resulting from validation of the previous input.
-                        Please provide the following information to complete the health record:`;
 
       if (missingFields.length) {
         validationPrompt += "\nMissing required fields:\n";
