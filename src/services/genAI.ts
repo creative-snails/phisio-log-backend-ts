@@ -6,7 +6,7 @@ const openAIClient = new OpenAI({
 });
 
 export type Message = {
-  role: "system" | "user";
+  role: "system" | "user" | "assistant";
   content: string;
 };
 
