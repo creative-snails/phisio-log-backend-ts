@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsc && node --env-file=.env dist/index.js",
-    "dev": "nodemon --exec node --env-file=.env -r ts-node/register src/index.ts",
+    "dev": "nodemon",
     "db": "mongod --config ~/mongodb.conf",
     "tsc": "tsc",
     "lint": "eslint src/**/*.{ts,tsx}",
