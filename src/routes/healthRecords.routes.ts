@@ -9,7 +9,7 @@ import { jsonGen, Message } from "../services/genAI";
 
 const router = Router();
 
-type Conversation = {
+export type Conversation = {
   id: string;
   history: Message[];
   lastAccessed: number;
@@ -51,7 +51,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
 
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
-    const validationResult = await validateHealthRecord(healthRecord);
+    const validationResult = await validateHealthRecord(healthRecord, conversation);
 
     if (validationResult.assistantPrompt)
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
@@ -104,7 +104,7 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
 
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
-    const validationResult = await validateHealthRecord(healthRecord);
+    const validationResult = await validateHealthRecord(healthRecord, conversation);
 
     if (validationResult.assistantPrompt)
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });

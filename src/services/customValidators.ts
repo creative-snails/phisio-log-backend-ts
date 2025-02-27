@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import prompts from "../ai-prompts/prompts";
 import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
+import { Conversation } from "../routes/healthRecords.routes";
 import { textGen } from "./genAI";
 
 interface ValidationHelathRecordReturn {
@@ -13,7 +14,8 @@ interface ValidationHelathRecordReturn {
 const MINIMUM_SYMPTOMS = 2;
 
 export async function validateHealthRecord(
-  healthRecord: Partial<HealthRecordType>
+  healthRecord: Partial<HealthRecordType>,
+  conversation: Conversation
 ): Promise<ValidationHelathRecordReturn> {
   // Convert dates to valid dates before handing over to validation
   healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
@@ -21,30 +23,44 @@ export async function validateHealthRecord(
     startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
   }));
 
-  healthRecord.medicalConsultations?.map((consultation) => ({
+  healthRecord.medicalConsultations = healthRecord.medicalConsultations?.map((consultation) => ({
     ...consultation,
     date: consultation.date ? new Date(consultation.date) : new Date(),
   }));
+
+  console.log(healthRecord);
+
+  if (healthRecord?.createdAt) {
+    healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
+  }
+  if (healthRecord?.updatedAt) {
+    healthRecord.updatedAt = healthRecord.updatedAt ? new Date(healthRecord.updatedAt) : new Date();
+  }
+
+  const { additionalSymptoms, treatmentsTried, medicalConsultations } = conversation.requestedData;
 
   try {
     const validatedRecord = Z_HealthRecord.parse(healthRecord);
     console.log("Validation successful!");
 
-    if (validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {
+    if (!additionalSymptoms && validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {
+      conversation.requestedData.additionalSymptoms = true;
       return {
         success: true,
         assistantPrompt: prompts.symptoms.assistant,
         systemPrompt: prompts.symptoms.system,
       };
     }
-    if (!validatedRecord.treatmentsTried.length) {
+    if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
+      conversation.requestedData.treatmentsTried = true;
       return {
         success: true,
         assistantPrompt: prompts.treatments.assistant,
         systemPrompt: prompts.treatments.system,
       };
     }
-    if (!validatedRecord.medicalConsultations.length) {
+    if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
+      conversation.requestedData.medicalConsultations = true;
       return {
         success: true,
         assistantPrompt: prompts.consultaions.assistant,
