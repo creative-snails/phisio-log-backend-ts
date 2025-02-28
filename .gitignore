@@ -2,3 +2,4 @@ node_modules
 dist
 phisiolog-service-account.json
 .env
+.DS_Store
