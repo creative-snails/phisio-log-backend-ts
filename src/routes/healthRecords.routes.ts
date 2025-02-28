@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
-import { initialSystemPrompt } from "../ai-prompts/prompts";
+import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
@@ -25,7 +25,7 @@ const conversations = new Map<string, Conversation>();
 const createNewConversation = (): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
-    history: [{ role: "system", content: initialSystemPrompt }],
+    history: [{ role: "system", content: prompts.init }],
     lastAccessed: Date.now(),
     requestedData: {
       additionalSymptoms: false,
