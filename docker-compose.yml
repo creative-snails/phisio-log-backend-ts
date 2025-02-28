@@ -1,0 +1,27 @@
+services:
+  nodeserver:
+    container_name: nodeserver
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=development
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app:ro
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: ["npm", "run", "dev"]
+  mongo:
+    container_name: mongo
+    image: mongo
+    command: --quiet
+    ports:
+      - "27017:27017"
+    restart: always
+    volumes:
+      - mongo-db:/data/db
+volumes:
+  mongo-db:

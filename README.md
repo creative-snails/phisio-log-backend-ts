@@ -15,10 +15,16 @@
 
 - **Framework**: Node.js with Express.js
   - **Reason**: Efficient and scalable for building the backend.
+- **TypeScript**: Used for the entire backend codebase
+  - **Reason**: Provides static typing, which helps catch errors early and improves code maintainability.
+- **Validation**: Zod
+  - **Reason**: Excellent support for TypeScript, making it easier to define and validate schemas.
 - **GraphQL**: Added on top of the Express server
   - **Reason**: Provides flexible data fetching, strong typing, and real-time capabilities.
-- **Database**: MongoDB (free tier)
+- **Database**: MongoDB
   - **Reason**: The schema-less nature of MongoDB offers flexibility, allowing you to update the schema later without complex migrations. This flexibility is beneficial for evolving applications where data structures may change over time.
+- **Containerization**: Docker
+  - **Reason**: Ensures a consistent development environment across different operating systems, making it easier for developers to collaborate and deploy applications.
 
 #### Authentication
 
@@ -27,9 +33,9 @@
 
 #### Additional Tools
 
-- **Cloud Storage**: AWS S3 (free tier)
+- **Cloud Storage**: AWS S3
   - **Reason**: To allow users to upload their own test results, such as PDFs and other files, ensuring they have all their health-related documents in one place.
-- **Notifications**: OneSignal (free tier) VS Custom Solution
+- **Notifications**: OneSignal VS Custom Solution
   - **OneSignal**: OneSignal is a robust and easy-to-implement solution for push notifications, with a free tier that should suffice for your initial needs. It handles the complexities of push notifications across different platforms, saving you development time.
   - **Custom Solution**: Given the small user base and relatively simple requirements, implementing a custom notification system is feasible. However, it may require more development effort and maintenance.
 

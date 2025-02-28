@@ -1,6 +1,7 @@
 {
-  "watch": ["src/**/*.ts"],
-  "ext": ".ts,.js",
-  "ignore": ["src/**/*.spec.ts", "src/**/*.test.ts"],
-  "exec": "ts-node ./src/index.ts"
+  "watch": ["src", "package.json"],
+  "ext": "ts,js,json",
+  "ignore": ["src/*/.spec.ts", "src/*/.test.ts"],
+  "exec": "node --require ts-node/register --env-file=.env src/index.ts",
+  "legacyWatch": true
 }
