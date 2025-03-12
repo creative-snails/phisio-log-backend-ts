@@ -78,6 +78,9 @@ router.post("/new-record", async (req: Request, res: Response) => {
         message: validationResult.assistantPrompt,
       });
     }
+
+    if (!healthRecord.updates?.length) delete healthRecord.updates;
+
     systemPrompt += `This was your output, update it to iclude the new requirements.
                 Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
