@@ -47,31 +47,31 @@ export async function validateHealthRecord(
       conversation.requestedData.additionalSymptoms = true;
       return {
         success: true,
-        assistantPrompt: prompts.symptoms.assistant,
-        systemPrompt: prompts.symptoms.system,
+        assistantPrompt: prompts.assistant.symptoms,
+        systemPrompt: prompts.system.symptoms,
       };
     }
     if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
       conversation.requestedData.treatmentsTried = true;
       return {
         success: true,
-        assistantPrompt: prompts.treatments.assistant,
-        systemPrompt: prompts.treatments.system,
+        assistantPrompt: prompts.assistant.treatments,
+        systemPrompt: prompts.system.treatments,
       };
     }
     if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
       conversation.requestedData.medicalConsultations = true;
       return {
         success: true,
-        assistantPrompt: prompts.consultaions.assistant,
-        systemPrompt: prompts.consultaions.system,
+        assistantPrompt: prompts.assistant.consultaions,
+        systemPrompt: prompts.system.consultaions(healthRecord),
       };
     }
 
     return { success: true };
   } catch (error) {
     if (error instanceof ZodError) {
-      let validationPrompt = prompts.validation;
+      let validationPrompt = prompts.system.validation;
 
       const validationErrors = error.errors.map((err) => ({
         field: err.path.join("."),

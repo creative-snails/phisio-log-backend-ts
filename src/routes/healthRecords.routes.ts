@@ -25,7 +25,7 @@ const conversations = new Map<string, Conversation>();
 const createNewConversation = (): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
-    history: [{ role: "system", content: prompts.init }],
+    history: [{ role: "system", content: prompts.system.init }],
     lastAccessed: Date.now(),
     requestedData: {
       additionalSymptoms: false,
@@ -126,6 +126,8 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
         healthRecord,
       });
     } else {
+      const oldRecord = await HealthRecord.findById(healthRecordId);
+      healthRecord = oldRecord!;
       res.status(200).json({
         conversationId: conversation.id,
         message: validationResult.assistantPrompt,

@@ -1,5 +1,8 @@
+import { HealthRecordType } from "../models/health-record/healthRecordValidation";
+
 export default {
-  init: `
+  system: {
+    init: `
     Based on the user description, generate a JSON object matching the Zod schema.
     - For fields: status, treatmentsTried, and severity, interpret the description and pick a value from their respective accepted values.
     - symptoms: Extract at least one symptom. If the symptoms are not similar, don't group them, create separate entries instead.
@@ -40,19 +43,14 @@ export default {
       "improvementStatus": "",
       "severity": ""
     }`,
-  symptoms: {
-    assistant: "You provided only one symptom, do you have more sympotms that can be added to the record.",
-    system: "Extract any additional symptoms detected and add them to the array.",
-  },
-  treatments: {
-    assistant: "Have you tried any treatments by yourself to deal with your condition?",
-    system: "Extract any tried treatments provide by the user",
-  },
-  consultaions: {
-    assistant:
-      "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?",
-    system: `
-      Based on the user input, extract the relavent information about the consultations and append them to the "medicalConsultations" array within the main health record object.
+    treatments: "Extract any tried treatments provide by the user",
+    symptoms: "Extract any additional symptoms detected and add them to the array.",
+    validation:
+      "Generate a user friendly prompt starting with the below and leveraging the error messages resulting from validation of the previous input. Please provide the following information to complete the health record:",
+    consultaions: (currentRecord: Partial<HealthRecordType>) => `
+      Current HealthRecord:
+      ${currentRecord}
+      Based on the user input, extract the relavent information about the consultations and append them to the "medicalConsultations" array within the Current HealthRecord object.
       - consultant: Extract the name of the consultant.
       - date: Extract the date of the consultation.
       - diagnosis: Summarize and clean up the diagnosis provided.
@@ -75,6 +73,10 @@ export default {
         "followUpActions": []
       }`,
   },
-  validation:
-    "Generate a user friendly prompt starting with the below and leveraging the error messages resulting from validation of the previous input. Please provide the following information to complete the health record:",
+  assistant: {
+    consultaions:
+      "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?",
+    symptoms: "You provided only one symptom, do you have more sympotms that can be added to the record.",
+    treatments: "Have you tried any treatments by yourself to deal with your condition?",
+  },
 };

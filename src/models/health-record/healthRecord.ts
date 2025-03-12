@@ -63,6 +63,10 @@ const updateSchema = new Schema<HealthRecordUpdateType>(
       type: [medicalConsultationSchema],
       default: [],
     },
+    severity: {
+      type: String,
+      enum: SEVERITY_TYPES,
+    },
   },
   { timestamps: true }
 );
