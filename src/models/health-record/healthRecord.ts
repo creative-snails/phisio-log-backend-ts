@@ -11,7 +11,6 @@ const symptomSchema = new Schema({
     trim: true,
   },
   startDate: Date,
-  duration: String,
 });
 
 const medicalConsultationSchema = new Schema({
@@ -63,6 +62,11 @@ const updateSchema = new Schema<HealthRecordUpdateType>(
       type: [medicalConsultationSchema],
       default: [],
     },
+    severity: {
+      type: String,
+      enum: SEVERITY_TYPES,
+      default: "variable",
+    },
   },
   { timestamps: true }
 );
@@ -72,7 +76,7 @@ const recordSchema = new Schema<HealthRecordType>(
     user: {
       type: String,
       default: "me",
-      required: true,
+      // required: true,
     },
     description: {
       type: String,
@@ -108,7 +112,7 @@ const recordSchema = new Schema<HealthRecordType>(
     severity: {
       type: String,
       enum: SEVERITY_TYPES,
-      required: true,
+      default: "variable",
     },
     updates: {
       type: [updateSchema],

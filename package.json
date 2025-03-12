@@ -5,11 +5,10 @@
   "scripts": {
     "start": "tsc && node --env-file=.env dist/index.js",
     "dev": "nodemon",
-    "db": "mongod --config ~/mongodb.conf",
     "tsc": "tsc",
-    "lint": "eslint src/**/*.{ts,tsx}",
-    "lint:fix": "eslint src/**/*.{ts,tsx} --fix",
-    "format": "prettier --write src/**/*.{ts,tsx}"
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts"
   },
   "keywords": [],
   "author": "",

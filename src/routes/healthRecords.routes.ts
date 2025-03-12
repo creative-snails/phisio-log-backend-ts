@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
-import { initialSystemPrompt } from "../ai-prompts/prompts";
+import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
@@ -9,7 +9,7 @@ import { jsonGen, Message } from "../services/genAI";
 
 const router = Router();
 
-type Conversation = {
+export type Conversation = {
   id: string;
   history: Message[];
   lastAccessed: number;
@@ -25,7 +25,7 @@ const conversations = new Map<string, Conversation>();
 const createNewConversation = (): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
-    history: [{ role: "system", content: initialSystemPrompt }],
+    history: [{ role: "system", content: prompts.system.init }],
     lastAccessed: Date.now(),
     requestedData: {
       additionalSymptoms: false,
@@ -40,7 +40,7 @@ const createNewConversation = (): Conversation => {
 
 router.post("/new-record", async (req: Request, res: Response) => {
   try {
-    let newSystemPrompt = "";
+    let systemPrompt = "";
     let healthRecord: Partial<HealthRecordType> = {};
     const { conversationId, message } = req.body;
 
@@ -53,13 +53,13 @@ router.post("/new-record", async (req: Request, res: Response) => {
     console.log(generatedJSON);
 
     healthRecord = JSON.parse(generatedJSON);
-    const validationResult = await validateHealthRecord(healthRecord, conversation.history);
+    const validationResult = await validateHealthRecord(healthRecord, conversation);
 
-    if (validationResult.userPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.userPrompt });
+    if (validationResult.assistantPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
-      newSystemPrompt += validationResult?.systemPrompt ?? "";
+      systemPrompt += validationResult?.systemPrompt ?? "";
 
       const savedHealthRecord = new HealthRecord({ ...healthRecord });
       await savedHealthRecord.save();
@@ -69,19 +69,22 @@ router.post("/new-record", async (req: Request, res: Response) => {
       res.status(201).json({
         conversationId: conversation.id,
         healthRecordId: savedHealthRecord._id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
         healthRecord,
       });
     } else {
       res.status(200).json({
         conversationId: conversation.id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
       });
     }
-    newSystemPrompt += `This was your output, update it to iclude the new requirements.
+
+    if (!healthRecord.updates?.length) delete healthRecord.updates;
+
+    systemPrompt += `This was your output, update it to iclude the new requirements.
                 Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
-    if (validationResult.userPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
+    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
@@ -106,10 +109,10 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
 
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
-    const validationResult = await validateHealthRecord(healthRecord, conversation.history);
+    const validationResult = await validateHealthRecord(healthRecord, conversation);
 
-    if (validationResult.userPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.userPrompt });
+    if (validationResult.assistantPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
       newSystemPrompt += validationResult?.systemPrompt ?? "";
@@ -122,20 +125,22 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
 
       res.status(200).json({
         conversationId: conversation.id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
         healthRecord,
       });
     } else {
+      const oldRecord = await HealthRecord.findById(healthRecordId);
+      healthRecord = oldRecord!;
       res.status(200).json({
         conversationId: conversation.id,
-        message: validationResult.userPrompt,
+        message: validationResult.assistantPrompt,
       });
     }
 
     newSystemPrompt += `This was your output, update it to iclude the new requirements.
                 Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
-    if (validationResult.userPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
+    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }

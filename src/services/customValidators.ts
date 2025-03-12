@@ -1,38 +1,78 @@
 import { ZodError } from "zod";
-import { consultationsPrompt, userPrompt } from "../ai-prompts/prompts";
+import prompts from "../ai-prompts/prompts";
 import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
-import { Message, textGen } from "./genAI";
+import { Conversation } from "../routes/healthRecords.routes";
+import { textGen } from "./genAI";
 
 interface ValidationHelathRecordReturn {
   success: boolean;
   systemPrompt?: string;
-  userPrompt?: string;
+  assistantPrompt?: string;
   validationErrors?: Array<{ field: string; message: string }>;
 }
 
+const MINIMUM_SYMPTOMS = 2;
+
 export async function validateHealthRecord(
   healthRecord: Partial<HealthRecordType>,
-  history: Message[]
+  conversation: Conversation
 ): Promise<ValidationHelathRecordReturn> {
-  let validationPrompt = "";
-  let systemPrompt = "";
-  let newUserPrompt = userPrompt;
+  // Convert dates to valid dates before handing over to validation
+  healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
+    ...symptom,
+    startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
+  }));
 
-  healthRecord.symptoms?.forEach((s) => {
-    if (s.startDate) s.startDate = new Date(s.startDate);
-    else delete s.startDate;
-  });
+  healthRecord.medicalConsultations = healthRecord.medicalConsultations?.map((consultation) => ({
+    ...consultation,
+    date: consultation.date ? new Date(consultation.date) : new Date(),
+  }));
 
-  healthRecord.medicalConsultations?.forEach((c) => {
-    if (c.date) c.date = new Date(c.date);
-  });
+  console.log(healthRecord);
+
+  if (healthRecord?.createdAt) {
+    healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
+  }
+  if (healthRecord?.updatedAt) {
+    healthRecord.updatedAt = healthRecord.updatedAt ? new Date(healthRecord.updatedAt) : new Date();
+  }
+
+  const { additionalSymptoms, treatmentsTried, medicalConsultations } = conversation.requestedData;
 
   try {
-    Z_HealthRecord.parse(healthRecord);
+    const validatedRecord = Z_HealthRecord.parse(healthRecord);
     console.log("Validation successful!");
+
+    if (!additionalSymptoms && validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {
+      conversation.requestedData.additionalSymptoms = true;
+      return {
+        success: true,
+        assistantPrompt: prompts.assistant.symptoms,
+        systemPrompt: prompts.system.symptoms,
+      };
+    }
+    if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
+      conversation.requestedData.treatmentsTried = true;
+      return {
+        success: true,
+        assistantPrompt: prompts.assistant.treatments,
+        systemPrompt: prompts.system.treatments,
+      };
+    }
+    if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
+      conversation.requestedData.medicalConsultations = true;
+      return {
+        success: true,
+        assistantPrompt: prompts.assistant.consultaions,
+        systemPrompt: prompts.system.consultaions(healthRecord),
+      };
+    }
+
     return { success: true };
   } catch (error) {
     if (error instanceof ZodError) {
+      let validationPrompt = prompts.system.validation;
+
       const validationErrors = error.errors.map((err) => ({
         field: err.path.join("."),
         message: err.message,
@@ -42,10 +82,6 @@ export async function validateHealthRecord(
       const invalidFields = validationErrors
         .filter((err) => !err.message.includes("Required"))
         .map((err) => `${err.field} (${err.message})`);
-
-      validationPrompt += `Generate a user friendly prompt starting with the below and leveraging
-                         the error messages resulting from validation of the previous input.
-                        Please provide the following information to complete the health record:`;
 
       if (missingFields.length) {
         validationPrompt += "\nMissing required fields:\n";
@@ -57,33 +93,11 @@ export async function validateHealthRecord(
         invalidFields.forEach((field) => (validationPrompt += `- ${field}\n`));
       }
 
-      newUserPrompt = await textGen([{ role: "user", content: validationPrompt }]);
-
       return {
         success: false,
         validationErrors,
-        userPrompt: newUserPrompt,
+        assistantPrompt: await textGen([{ role: "user", content: validationPrompt }]),
       };
-    }
-  }
-
-  if (history.length > 2) {
-    if ((healthRecord.symptoms?.length ?? 0) <= 1) {
-      newUserPrompt = "You provided only one symptom, do you have more sympotms that can be added to the record.";
-      systemPrompt = "Extract any additional symptoms detected and add them to the array.";
-
-      return { success: true, systemPrompt, userPrompt: newUserPrompt };
-    }
-    if (!healthRecord.treatmentsTried?.length) {
-      newUserPrompt = "Have you tried any treatments by yourself to deal with your condition?";
-      systemPrompt = "Extract any tried treatments provide by the user";
-
-      return { success: true, systemPrompt, userPrompt: newUserPrompt };
-    }
-    if (!healthRecord.medicalConsultations?.length) {
-      newUserPrompt =
-        "Have you had any consultations about your current condition? If so, could you share the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended?";
-      return { success: true, systemPrompt: consultationsPrompt, userPrompt: newUserPrompt };
     }
   }
 
