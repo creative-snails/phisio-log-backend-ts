@@ -50,7 +50,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
-    console.log(generatedJSON);
+    // console.log(generatedJSON);
 
     healthRecord = JSON.parse(generatedJSON);
     const validationResult = await validateHealthRecord(healthRecord, conversation);

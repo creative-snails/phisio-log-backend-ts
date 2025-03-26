@@ -18,17 +18,21 @@ export async function validateHealthRecord(
   conversation: Conversation
 ): Promise<ValidationHelathRecordReturn> {
   // Convert dates to valid dates before handing over to validation
-  healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
-    ...symptom,
-    startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
-  }));
+  if (healthRecord.symptoms?.length) {
+    healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
+      ...symptom,
+      startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
+    }));
+  }
 
-  healthRecord.medicalConsultations = healthRecord.medicalConsultations?.map((consultation) => ({
-    ...consultation,
-    date: consultation.date ? new Date(consultation.date) : new Date(),
-  }));
+  if (healthRecord.medicalConsultations?.length) {
+    healthRecord.medicalConsultations = healthRecord.medicalConsultations.map((consultation) => ({
+      ...consultation,
+      date: consultation.date ? new Date(consultation.date) : new Date(),
+    }));
+  }
 
-  console.log(healthRecord);
+  console.log("here", healthRecord);
 
   if (healthRecord?.createdAt) {
     healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
@@ -63,7 +67,7 @@ export async function validateHealthRecord(
       conversation.requestedData.medicalConsultations = true;
       return {
         success: true,
-        assistantPrompt: prompts.assistant.consultaions,
+        assistantPrompt: prompts.assistant.consultations,
         systemPrompt: prompts.system.consultaions(healthRecord),
       };
     }
