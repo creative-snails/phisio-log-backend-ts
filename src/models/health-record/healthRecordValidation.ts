@@ -16,7 +16,9 @@ const Z_Symptoms = z.object({
     .trim()
     .min(1, "Symptom name is required")
     .max(MAX_CHAR_MEDIUM, maxValidationMessage("Symptom", MAX_CHAR_MEDIUM)),
-  startDate: z.date().max(new Date(), "Start date cannot be in the future").optional(),
+  startDate: z.date().optional(),
+  // TODO: This is causing some strange behaviour, will address it in the future
+  // startDate: z.date().max(new Date(), "Start date cannot be in the future").optional(),
 });
 
 const Z_MedicalConsultation = z.object({

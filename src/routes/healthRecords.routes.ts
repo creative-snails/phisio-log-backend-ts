@@ -50,7 +50,6 @@ router.post("/new-record", async (req: Request, res: Response) => {
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
-    // console.log(generatedJSON);
 
     healthRecord = JSON.parse(generatedJSON);
     const validationResult = await validateHealthRecord(healthRecord, conversation);
@@ -93,7 +92,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 router.put("/new-record/:healthRecordId", async (req: Request, res: Response): Promise<Response | any> => {
   try {
-    let newSystemPrompt = "";
+    let systemPrompt = "";
     let healthRecord: Partial<HealthRecordType> = {};
     const { healthRecordId } = req.params;
     const { conversationId, message } = req.body;
@@ -104,7 +103,15 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     const conversation = conversations.get(conversationId);
     if (!conversation) return res.status(404).json({ error: "Conversation not found" });
 
-    conversation.history.push({ role: "user", content: message });
+    const existingRecrod = await HealthRecord.findById(healthRecordId);
+    if (!existingRecrod) return res.status(404).json({ error: "Health record not found" });
+
+    healthRecord = existingRecrod;
+
+    conversation.history.push(
+      { role: "system", content: prompts.system.update(healthRecord) },
+      { role: "user", content: message }
+    );
     conversation.lastAccessed = Date.now();
 
     const generatedJSON = await jsonGen(conversation.history);
@@ -115,10 +122,9 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
-      newSystemPrompt += validationResult?.systemPrompt ?? "";
+      systemPrompt = validationResult?.systemPrompt ?? "";
 
       const updatedRecord = await HealthRecord.findByIdAndUpdate(healthRecordId, { ...healthRecord }, { new: true });
-
       if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
 
       healthRecord = updatedRecord;
@@ -137,10 +143,7 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
       });
     }
 
-    newSystemPrompt += `This was your output, update it to iclude the new requirements.
-                Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
-
-    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: newSystemPrompt });
+    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }

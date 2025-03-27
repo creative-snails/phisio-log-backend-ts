@@ -32,8 +32,6 @@ export async function validateHealthRecord(
     }));
   }
 
-  console.log("here", healthRecord);
-
   if (healthRecord?.createdAt) {
     healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
   }
@@ -52,7 +50,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.symptoms,
-        systemPrompt: prompts.system.symptoms,
+        systemPrompt: prompts.system.symptoms(healthRecord),
       };
     }
     if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
@@ -60,7 +58,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.treatments,
-        systemPrompt: prompts.system.treatments,
+        systemPrompt: prompts.system.treatments(healthRecord),
       };
     }
     if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
