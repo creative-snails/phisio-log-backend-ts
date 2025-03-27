@@ -46,13 +46,13 @@ export default {
     'Please provide the following information to complete the health record:'
     Use the validation errors to guide the user on what specific information is missing or incorrect. Ensure the message is polite, clear, and supportive.`,
     consultaions: (currentRecord: Partial<HealthRecordType>) => `
-      Current HealthRecord:
-      ${currentRecord}
-      Based on the user input, extract the relavent information about the consultations and append them to the "medicalConsultations" array within the Current HealthRecord object.
-      - consultant: Extract the name of the consultant.
-      - date: Extract the date of the consultation.
-      - diagnosis: Summarize and clean up the diagnosis provided.
-      - followUpActions: Extract any follow-up actions recommended. If there are multiple, list them separately.
+      Based on the user input, extract the relevant information about the consultations and append them to the "medicalConsultations" array within the Current HealthRecord object.
+      - Retain all the data already existing in the current health record.
+      - Focus on extracting and appending the following consultation details:
+        - consultant: Extract the name of the consultant.
+        - date: Extract the date of the consultation.
+        - diagnosis: Summarize and clean up the diagnosis provided.
+        - followUpActions: Extract any follow-up actions recommended. If there are multiple, list them separately.
       - If data is missing, leave fields empty. Ignore missing details.
 
       Zod Schema
@@ -65,10 +65,21 @@ export default {
 
       Expected JSON Output structure that you will add to the "medicalConsultations" array:
       {
-        "consultant": "",
-        "date": "",
-        "diagnosis": "",
-        "followUpActions": []
+        "description": "${currentRecord.description}",
+        "symptoms": ${JSON.stringify(currentRecord.symptoms)},
+        "treatmentsTried": ${JSON.stringify(currentRecord.treatmentsTried)},
+        "improvementStatus": "${currentRecord.improvementStatus}",
+        "severity": "${currentRecord.severity}",
+        "status": "${currentRecord.status}",
+        "medicalConsultations": [
+          ...${JSON.stringify(currentRecord.medicalConsultations)},
+          {
+            "consultant": "",
+            "date": "",
+            "diagnosis": "",
+            "followUpActions": []
+          }
+        ]
       }`,
   },
   assistant: {
