@@ -18,17 +18,19 @@ export async function validateHealthRecord(
   conversation: Conversation
 ): Promise<ValidationHelathRecordReturn> {
   // Convert dates to valid dates before handing over to validation
-  healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
-    ...symptom,
-    startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
-  }));
+  if (healthRecord.symptoms?.length) {
+    healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
+      ...symptom,
+      startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
+    }));
+  }
 
-  healthRecord.medicalConsultations = healthRecord.medicalConsultations?.map((consultation) => ({
-    ...consultation,
-    date: consultation.date ? new Date(consultation.date) : new Date(),
-  }));
-
-  console.log(healthRecord);
+  if (healthRecord.medicalConsultations?.length) {
+    healthRecord.medicalConsultations = healthRecord.medicalConsultations.map((consultation) => ({
+      ...consultation,
+      date: consultation.date ? new Date(consultation.date) : new Date(),
+    }));
+  }
 
   if (healthRecord?.createdAt) {
     healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
@@ -48,7 +50,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.symptoms,
-        systemPrompt: prompts.system.symptoms,
+        systemPrompt: prompts.system.symptoms(healthRecord),
       };
     }
     if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
@@ -56,14 +58,14 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.treatments,
-        systemPrompt: prompts.system.treatments,
+        systemPrompt: prompts.system.treatments(healthRecord),
       };
     }
     if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
       conversation.requestedData.medicalConsultations = true;
       return {
         success: true,
-        assistantPrompt: prompts.assistant.consultaions,
+        assistantPrompt: prompts.assistant.consultations,
         systemPrompt: prompts.system.consultaions(healthRecord),
       };
     }
