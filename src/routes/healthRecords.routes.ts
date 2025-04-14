@@ -157,7 +157,7 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response): Prom
     const { healthRecordId } = req.params;
     const { conversationId, message } = req.body;
 
-    if (!healthRecordId) return res.status(404).json({ error: "HealthRecordIs is required" });
+    if (!healthRecordId) return res.status(404).json({ error: "The healthRecordId is required" });
 
     const conversation = conversations.get(conversationId) || createNewConversation();
     conversation.lastAccessed = Date.now();
@@ -182,13 +182,10 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response): Prom
       if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
       res.status(200).json({
         conversationId: conversation.id,
-        healthRecordId: updatedRecord?._id,
         message: validationResult.assistantPrompt,
         healthRecord: updatedRecord,
       });
     } else {
-      const oldRecord = await HealthRecord.findById(healthRecordId);
-      healthRecordUpdate = oldRecord!;
       res.status(200).json({
         conversationId: conversation.id,
         message: validationResult.assistantPrompt,
