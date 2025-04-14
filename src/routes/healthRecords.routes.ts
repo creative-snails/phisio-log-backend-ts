@@ -1,3 +1,4 @@
+import { create } from "domain";
 import { Request, Response, Router } from "express";
 import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
@@ -144,6 +145,18 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     }
 
     if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
+
+router.put("/:healthRecordId/updates", async (req: Request, res: Response) => {
+  try {
+    const { healthRecordId } = req.params;
+    const { conversationId, message } = req.body;
+
+    if (!healthRecordId) return res.status(404).json({ error: "Health record not found" });
+    const conversation = conversations.get(conversationId) || createNewConversation();
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
