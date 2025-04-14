@@ -22,10 +22,10 @@ export type Conversation = {
 
 const conversations = new Map<string, Conversation>();
 
-const createNewConversation = (): Conversation => {
+const createNewConversation = (prompt: string): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
-    history: [{ role: "system", content: prompts.system.init }],
+    history: [{ role: "system", content: prompt }],
     lastAccessed: Date.now(),
     requestedData: {
       additionalSymptoms: false,
@@ -44,7 +44,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
     let healthRecord: Partial<HealthRecordType> = {};
     const { conversationId, message } = req.body;
 
-    const conversation = conversations.get(conversationId) || createNewConversation();
+    const conversation = conversations.get(conversationId) || createNewConversation(prompts.system.init);
     conversation.lastAccessed = Date.now();
 
     conversation.history.push({ role: "user", content: message });
@@ -157,9 +157,11 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response): Prom
     const { healthRecordId } = req.params;
     const { conversationId, message } = req.body;
 
-    if (!healthRecordId) return res.status(404).json({ error: "The healthRecordId is required" });
+    const existingRecrod = await HealthRecord.findById(healthRecordId);
+    if (!existingRecrod) return res.status(404).json({ error: "Health record not found" });
 
-    const conversation = conversations.get(conversationId) || createNewConversation();
+    const conversation =
+      conversations.get(conversationId) || createNewConversation(prompts.system.update(existingRecrod));
     conversation.lastAccessed = Date.now();
     conversation.history.push({ role: "user", content: message });
 
