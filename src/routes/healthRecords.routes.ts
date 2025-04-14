@@ -1,10 +1,9 @@
-import { create } from "domain";
 import { Request, Response, Router } from "express";
 import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
 import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
-import { HealthRecordType } from "../models/health-record/healthRecordValidation";
+import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
 
@@ -152,11 +151,26 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
 
 router.put("/:healthRecordId/updates", async (req: Request, res: Response) => {
   try {
+    let systemPrompt = "";
+    let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
     const { healthRecordId } = req.params;
     const { conversationId, message } = req.body;
 
     if (!healthRecordId) return res.status(404).json({ error: "Health record not found" });
+
     const conversation = conversations.get(conversationId) || createNewConversation();
+    conversation.lastAccessed = Date.now();
+    conversation.history.push({ role: "user", content: message });
+
+    const generatedJSON = await jsonGen(conversation.history);
+    healthRecordUpdate = JSON.parse(generatedJSON);
+
+    const validationResult = await validateHealthRecord(healthRecordUpdate, conversation);
+
+    if (validationResult.assistantPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
+
+    if (validationResult.success) systemPrompt += validationResult?.systemPrompt ?? "";
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
