@@ -1,6 +1,11 @@
 import { ZodError } from "zod";
 import prompts from "../ai-prompts/prompts";
-import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
+import {
+  HealthRecordType,
+  HealthRecordUpdateType,
+  Z_HealthRecord,
+  Z_HealthRecordUpdate,
+} from "../models/health-record/healthRecordValidation";
 import { Conversation } from "../routes/healthRecords.routes";
 import { textGen } from "./genAI";
 
@@ -14,8 +19,9 @@ interface ValidationHelathRecordReturn {
 const MINIMUM_SYMPTOMS = 2;
 
 export async function validateHealthRecord(
-  healthRecord: Partial<HealthRecordType>,
-  conversation: Conversation
+  healthRecord: Partial<HealthRecordType | HealthRecordUpdateType>,
+  conversation: Conversation,
+  isUpdate: boolean = false
 ): Promise<ValidationHelathRecordReturn> {
   // Convert dates to valid dates before handing over to validation
   if (healthRecord.symptoms?.length) {
@@ -42,7 +48,7 @@ export async function validateHealthRecord(
   const { additionalSymptoms, treatmentsTried, medicalConsultations } = conversation.requestedData;
 
   try {
-    const validatedRecord = Z_HealthRecord.parse(healthRecord);
+    const validatedRecord = isUpdate ? Z_HealthRecordUpdate.parse(healthRecord) : Z_HealthRecord.parse(healthRecord);
     console.log("Validation successful!");
 
     if (!additionalSymptoms && validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {

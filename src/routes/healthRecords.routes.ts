@@ -168,7 +168,8 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response): Prom
     const generatedJSON = await jsonGen(conversation.history);
     healthRecordUpdate = JSON.parse(generatedJSON);
 
-    const validationResult = await validateHealthRecord(healthRecordUpdate, conversation);
+    // Third argument indicates whether this is an update (default is false)
+    const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
 
     if (validationResult.assistantPrompt)
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
