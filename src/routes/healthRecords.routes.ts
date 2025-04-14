@@ -149,14 +149,15 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
-router.put("/:healthRecordId/updates", async (req: Request, res: Response) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+router.put("/:healthRecordId/updates", async (req: Request, res: Response): Promise<Response | any> => {
   try {
     let systemPrompt = "";
     let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
     const { healthRecordId } = req.params;
     const { conversationId, message } = req.body;
 
-    if (!healthRecordId) return res.status(404).json({ error: "Health record not found" });
+    if (!healthRecordId) return res.status(404).json({ error: "HealthRecordIs is required" });
 
     const conversation = conversations.get(conversationId) || createNewConversation();
     conversation.lastAccessed = Date.now();
@@ -170,7 +171,30 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response) => {
     if (validationResult.assistantPrompt)
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
-    if (validationResult.success) systemPrompt += validationResult?.systemPrompt ?? "";
+    if (validationResult.success) {
+      systemPrompt += validationResult?.systemPrompt ?? "";
+
+      const updatedRecord = await HealthRecord.findByIdAndUpdate(
+        healthRecordId,
+        { $push: { updates: healthRecordUpdate } },
+        { new: true }
+      );
+      if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+      res.status(200).json({
+        conversationId: conversation.id,
+        healthRecordId: updatedRecord?._id,
+        message: validationResult.assistantPrompt,
+        healthRecord: updatedRecord,
+      });
+    } else {
+      const oldRecord = await HealthRecord.findById(healthRecordId);
+      healthRecordUpdate = oldRecord!;
+      res.status(200).json({
+        conversationId: conversation.id,
+        message: validationResult.assistantPrompt,
+      });
+    }
+    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
