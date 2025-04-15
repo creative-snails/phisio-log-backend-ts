@@ -22,10 +22,10 @@ export type Conversation = {
 
 const conversations = new Map<string, Conversation>();
 
-const createNewConversation = (prompt: string): Conversation => {
+const createNewConversation = (systemPrompt: string): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
-    history: [{ role: "system", content: prompt }],
+    history: [{ role: "system", content: systemPrompt }],
     lastAccessed: Date.now(),
     requestedData: {
       additionalSymptoms: false,
@@ -163,6 +163,7 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response): Prom
     const conversation =
       conversations.get(conversationId) || createNewConversation(prompts.system.update(existingRecord));
     conversation.lastAccessed = Date.now();
+
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
@@ -182,7 +183,9 @@ router.put("/:healthRecordId/updates", async (req: Request, res: Response): Prom
         { $push: { updates: healthRecordUpdate } },
         { new: true }
       );
+
       if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+
       res.status(200).json({
         conversationId: conversation.id,
         message: validationResult.assistantPrompt,

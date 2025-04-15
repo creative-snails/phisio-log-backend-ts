@@ -21,7 +21,7 @@ const MINIMUM_SYMPTOMS = 2;
 export async function validateHealthRecord(
   healthRecord: Partial<HealthRecordType | HealthRecordUpdateType>,
   conversation: Conversation,
-  isUpdate: boolean = false
+  isUpdate?: boolean
 ): Promise<ValidationHelathRecordReturn> {
   // Convert dates to valid dates before handing over to validation
   if (healthRecord.symptoms?.length) {
