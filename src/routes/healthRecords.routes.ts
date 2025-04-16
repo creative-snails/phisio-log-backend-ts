@@ -159,7 +159,7 @@ router.put(
       const { parentHealthRecordId, updateHealthRecordId } = req.params;
       const { conversationId, message } = req.body;
 
-      const parentRecord: Partial<HealthRecordType> | null = await HealthRecord.findById(parentHealthRecordId);
+      const parentRecord: any = await HealthRecord.findById(parentHealthRecordId);
       if (!parentRecord) return res.status(404).json({ error: "Health record not found" });
 
       let updateRecord;
@@ -175,7 +175,7 @@ router.put(
       }
 
       const conversation =
-        conversations.get(conversationId) || createNewConversation(prompts.system.update(parentRecord));
+        conversations.get(conversationId) || createNewConversation(prompts.system.update(updateRecord ?? parentRecord));
       conversation.lastAccessed = Date.now();
 
       conversation.history.push({ role: "user", content: message });
@@ -192,13 +192,29 @@ router.put(
       if (validationResult.success) {
         systemPrompt = validationResult?.systemPrompt ?? "";
 
-        const updatedRecord = await HealthRecord.findByIdAndUpdate(
-          parentHealthRecordId,
-          { $push: { updates: healthRecordUpdate } },
-          { new: true }
-        );
+        // This approach is used since positional $ operator yielded conflicts with createdAt and updatedAt fields
+        let updatedRecord;
+        if (updateHealthRecordId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const index = parentRecord.updates?.findIndex((update: any) => {
+            return update._id.toString() == updateHealthRecordId;
+          });
 
-        if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+          if (index === undefined || index === -1)
+            return res.status(404).json({ error: "Health record update not found" });
+
+          Object.assign(parentRecord.updates[index], healthRecordUpdate);
+
+          updatedRecord = await parentRecord.save({ new: true });
+        } else {
+          updatedRecord = await HealthRecord.findByIdAndUpdate(
+            parentHealthRecordId,
+            { $push: { updates: healthRecordUpdate } },
+            { new: true }
+          );
+        }
+
+        if (!updatedRecord) return res.status(404).json({ error: "Health record not found asdfasdf" });
 
         res.status(200).json({
           conversationId: conversation.id,
