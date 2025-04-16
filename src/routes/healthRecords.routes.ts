@@ -156,14 +156,26 @@ router.put(
     try {
       let systemPrompt = "";
       let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
-      const { healthRecordId } = req.params;
+      const { parentHealthRecordId, updateHealthRecordId } = req.params;
       const { conversationId, message } = req.body;
 
-      const existingRecord = await HealthRecord.findById(healthRecordId);
-      if (!existingRecord) return res.status(404).json({ error: "Health record not found" });
+      const parentRecord: Partial<HealthRecordType> | null = await HealthRecord.findById(parentHealthRecordId);
+      if (!parentRecord) return res.status(404).json({ error: "Health record not found" });
+
+      let updateRecord;
+      if (updateHealthRecordId) {
+        const updateRecordTemp = await HealthRecord.findOne(
+          { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
+          {
+            "updates.$": 1,
+          }
+        );
+        if (!updateRecordTemp) return res.status(404).json({ error: "Health record update not found" });
+        updateRecord = updateRecordTemp.updates[0];
+      }
 
       const conversation =
-        conversations.get(conversationId) || createNewConversation(prompts.system.update(existingRecord));
+        conversations.get(conversationId) || createNewConversation(prompts.system.update(parentRecord));
       conversation.lastAccessed = Date.now();
 
       conversation.history.push({ role: "user", content: message });
@@ -181,7 +193,7 @@ router.put(
         systemPrompt = validationResult?.systemPrompt ?? "";
 
         const updatedRecord = await HealthRecord.findByIdAndUpdate(
-          healthRecordId,
+          parentHealthRecordId,
           { $push: { updates: healthRecordUpdate } },
           { new: true }
         );
