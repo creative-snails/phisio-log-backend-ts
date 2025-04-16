@@ -149,59 +149,62 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-router.put("/:healthRecordId/updates", async (req: Request, res: Response): Promise<Response | any> => {
-  try {
-    let systemPrompt = "";
-    let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
-    const { healthRecordId } = req.params;
-    const { conversationId, message } = req.body;
+router.put(
+  "/updates/:parentHealthRecordId/:updateHealthRecordId?",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async (req: Request, res: Response): Promise<Response | any> => {
+    try {
+      let systemPrompt = "";
+      let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
+      const { healthRecordId } = req.params;
+      const { conversationId, message } = req.body;
 
-    const existingRecord = await HealthRecord.findById(healthRecordId);
-    if (!existingRecord) return res.status(404).json({ error: "Health record not found" });
+      const existingRecord = await HealthRecord.findById(healthRecordId);
+      if (!existingRecord) return res.status(404).json({ error: "Health record not found" });
 
-    const conversation =
-      conversations.get(conversationId) || createNewConversation(prompts.system.update(existingRecord));
-    conversation.lastAccessed = Date.now();
+      const conversation =
+        conversations.get(conversationId) || createNewConversation(prompts.system.update(existingRecord));
+      conversation.lastAccessed = Date.now();
 
-    conversation.history.push({ role: "user", content: message });
+      conversation.history.push({ role: "user", content: message });
 
-    const generatedJSON = await jsonGen(conversation.history);
-    healthRecordUpdate = JSON.parse(generatedJSON);
+      const generatedJSON = await jsonGen(conversation.history);
+      healthRecordUpdate = JSON.parse(generatedJSON);
 
-    // Third argument indicates whether this is an update (default is false)
-    const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
+      // Third argument indicates whether this is an update (default is false)
+      const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
 
-    if (validationResult.assistantPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
+      if (validationResult.assistantPrompt)
+        conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
-    if (validationResult.success) {
-      systemPrompt = validationResult?.systemPrompt ?? "";
+      if (validationResult.success) {
+        systemPrompt = validationResult?.systemPrompt ?? "";
 
-      const updatedRecord = await HealthRecord.findByIdAndUpdate(
-        healthRecordId,
-        { $push: { updates: healthRecordUpdate } },
-        { new: true }
-      );
+        const updatedRecord = await HealthRecord.findByIdAndUpdate(
+          healthRecordId,
+          { $push: { updates: healthRecordUpdate } },
+          { new: true }
+        );
 
-      if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+        if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
 
-      res.status(200).json({
-        conversationId: conversation.id,
-        message: validationResult.assistantPrompt,
-        healthRecord: updatedRecord,
-      });
-    } else {
-      res.status(200).json({
-        conversationId: conversation.id,
-        message: validationResult.assistantPrompt,
-      });
+        res.status(200).json({
+          conversationId: conversation.id,
+          message: validationResult.assistantPrompt,
+          healthRecord: updatedRecord,
+        });
+      } else {
+        res.status(200).json({
+          conversationId: conversation.id,
+          message: validationResult.assistantPrompt,
+        });
+      }
+      if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error", error });
     }
-    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error", error });
   }
-});
+);
 
 export default router;
 
