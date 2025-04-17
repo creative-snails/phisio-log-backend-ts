@@ -58,7 +58,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
-      systemPrompt += validationResult?.systemPrompt ?? "";
+      systemPrompt = validationResult?.systemPrompt ?? "";
 
       const savedHealthRecord = new HealthRecord({ ...healthRecord });
       await savedHealthRecord.save();
@@ -79,9 +79,6 @@ router.post("/new-record", async (req: Request, res: Response) => {
     }
 
     if (!healthRecord.updates?.length) delete healthRecord.updates;
-
-    systemPrompt += `This was your output, update it to iclude the new requirements.
-                Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
     if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
@@ -135,8 +132,6 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
         healthRecord,
       });
     } else {
-      const oldRecord = await HealthRecord.findById(healthRecordId);
-      healthRecord = oldRecord!;
       res.status(200).json({
         conversationId: conversation.id,
         message: validationResult.assistantPrompt,
@@ -159,7 +154,7 @@ router.put(
       const { parentHealthRecordId, updateHealthRecordId } = req.params;
       const { conversationId, message } = req.body;
 
-      const parentRecord: any = await HealthRecord.findById(parentHealthRecordId);
+      const parentRecord = await HealthRecord.findById(parentHealthRecordId);
       if (!parentRecord) return res.status(404).json({ error: "Health record not found" });
 
       let updateRecord;
@@ -205,7 +200,7 @@ router.put(
 
           Object.assign(parentRecord.updates[index], healthRecordUpdate);
 
-          updatedRecord = await parentRecord.save({ new: true });
+          updatedRecord = await parentRecord.save();
         } else {
           updatedRecord = await HealthRecord.findByIdAndUpdate(
             parentHealthRecordId,
