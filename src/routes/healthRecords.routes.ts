@@ -194,12 +194,10 @@ router.put(
           const index = parentRecord.updates?.findIndex((update: any) => {
             return update._id.toString() == updateHealthRecordId;
           });
-
           if (index === undefined || index === -1)
             return res.status(404).json({ error: "Health record update not found" });
 
           Object.assign(parentRecord.updates[index], healthRecordUpdate);
-
           updatedRecord = await parentRecord.save();
         } else {
           updatedRecord = await HealthRecord.findByIdAndUpdate(
@@ -209,7 +207,7 @@ router.put(
           );
         }
 
-        if (!updatedRecord) return res.status(404).json({ error: "Health record not found asdfasdf" });
+        if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
 
         res.status(200).json({
           conversationId: conversation.id,
