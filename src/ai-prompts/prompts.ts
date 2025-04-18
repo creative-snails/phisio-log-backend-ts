@@ -3,13 +3,14 @@ import { HealthRecordType } from "../models/health-record/healthRecordValidation
 export default {
   system: {
     init: `
-      Based on the user description, generate a JSON object matching the Zod schema.
-      - For fields: status, improvementStatus, and severity, interpret the description and pick a value from their respective accepted values. These fields have default values and are not required, so if the information is not present, use the default values.
-      - symptoms: Extract at least one symptom only if it is clearly related to a medical or physical condition. If the symptoms are not similar, don't group them, create separate entries instead. If no symptoms are found, leave the field empty.
-      - description: Summarize, clean up, and fix any mistakes before adding it to the JSON.
-      - If data is missing, leave fields empty if it has no default value in the Zod schema. Ignore missing details.
-      - Be aware that today's date is ${new Date()}
-      - Only extract symptoms if they are clearly related to a medical or physical condition. Ignore general statements or non-medical information.
+      Based on the user description, generate a JSON object that accurately matches the Zod schema.
+      - For "description": summarize, clean up, and correct mistakes before adding it to the JSON. Do not include any placeholder text, meaningless phrases or unrelated information in the description.
+      - For fields "status", "improvementStatus", and "severity", interpret the description and select a value from their respective accepted options. These fields have default values and are not required, so if the information is not clearly present, use the default values.
+      - For "symptoms": extract at least one symptom **only if** it is clearly related to a medical or physical condition. If multiple unrelated symptoms are mentioned, create separate entries rather than grouping them. If no valid symptoms are found, leave the field empty.
+      - Extract only clear, medically relevant details from the user's input. Disregard any vague, unrelated, non-medical, or ambiguous information.
+      - If any required fields are missing and have no default in the Zod schema, leave those fields empty.
+      - Be aware that today's date is ${new Date()}. Ensure no future dates are assigned to any date field.
+      - Summarize and clean up all extracted data, correcting typos and inconsistent phrasing before adding it to the final JSON.
 
       Zod Schema
       const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;
@@ -101,14 +102,15 @@ export default {
       }
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
-      Based on the user description and the conversation history, generate a JSON object matching the Zod schema.
-      - For description field, combine the existing description from the parent record, conversation history (if available), and any new information provided by the user into a single clear summary.
-      - For fields with default values, interpret the description and pick a value from their respective accepted values. If the information is not present, use the default values.
-      - Extract relevant information from the user's input and the conversation history, and update the existing data accordingly.
-      - Summarize, clean up, and fix any mistakes before adding the information to the JSON.
-      - If data is missing, leave fields empty if it has no default value in the Zod schema. Ignore missing details.
-      - Be aware that today's date is ${new Date()}.
-      - Only extract information that is clearly related to health conditions. Ignore general statements or non-relevant information.
+      Based on the user's description and the conversation history, generate a JSON object that accurately matches the Zod schema.
+      - Merge the existing "description" from the health record with any new, valid, and medically relevant information from the user's input and conversation history into one clear, corrected summary.
+      - For fields that have predefined defaults (status, improvementStatus, severity):
+          → interpret the user's input carefully.
+          → if the user does not clearly mention or imply an update, retain the existing value or use the default if no prior data is available.
+      - Extract only clear, medically relevant details from the user's input. Disregard any vague, unrelated, non-medical, nonsensical content (such as placeholder text, jokes, unrelated comments, or generic statements) or ambiguous information.
+      - If any required fields are missing and have no default in the Zod schema, leave those fields empty.
+      - Be aware that today's date is ${new Date()}. Ensure no future dates are assigned to any date field.
+      - Summarize and clean up all extracted data, correcting typos and inconsistent phrasing before adding it to the final JSON.
 
       Zod Schema
       const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;
