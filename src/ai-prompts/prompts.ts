@@ -102,6 +102,7 @@ export default {
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
       Based on the user description and the conversation history, generate a JSON object matching the Zod schema.
+      - For description field, combine the existing description from the parent record, conversation history (if available), and any new information provided by the user into a single clear summary.
       - For fields with default values, interpret the description and pick a value from their respective accepted values. If the information is not present, use the default values.
       - Extract relevant information from the user's input and the conversation history, and update the existing data accordingly.
       - Summarize, clean up, and fix any mistakes before adding the information to the JSON.

@@ -187,7 +187,6 @@ router.put(
       if (validationResult.success) {
         systemPrompt = validationResult?.systemPrompt ?? "";
 
-        // This approach is used since positional $ operator yielded conflicts with createdAt and updatedAt fields
         let updatedRecord;
         if (updateHealthRecordId) {
           const updateFields: { [key: string]: string | number | boolean | object | undefined } = {};
