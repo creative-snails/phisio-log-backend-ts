@@ -3,7 +3,7 @@ import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
 import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
-import { HealthRecordType } from "../models/health-record/healthRecordValidation";
+import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
 
@@ -22,10 +22,10 @@ export type Conversation = {
 
 const conversations = new Map<string, Conversation>();
 
-const createNewConversation = (): Conversation => {
+const createNewConversation = (systemPrompt: string): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
-    history: [{ role: "system", content: prompts.system.init }],
+    history: [{ role: "system", content: systemPrompt }],
     lastAccessed: Date.now(),
     requestedData: {
       additionalSymptoms: false,
@@ -44,7 +44,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
     let healthRecord: Partial<HealthRecordType> = {};
     const { conversationId, message } = req.body;
 
-    const conversation = conversations.get(conversationId) || createNewConversation();
+    const conversation = conversations.get(conversationId) || createNewConversation(prompts.system.init);
     conversation.lastAccessed = Date.now();
 
     conversation.history.push({ role: "user", content: message });
@@ -58,7 +58,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
     if (validationResult.success) {
-      systemPrompt += validationResult?.systemPrompt ?? "";
+      systemPrompt = validationResult?.systemPrompt ?? "";
 
       const savedHealthRecord = new HealthRecord({ ...healthRecord });
       await savedHealthRecord.save();
@@ -79,9 +79,6 @@ router.post("/new-record", async (req: Request, res: Response) => {
     }
 
     if (!healthRecord.updates?.length) delete healthRecord.updates;
-
-    systemPrompt += `This was your output, update it to iclude the new requirements.
-                Don't update single value entries that were already generated if not needed:\n ${JSON.stringify(healthRecord)}`;
 
     if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
@@ -135,8 +132,6 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
         healthRecord,
       });
     } else {
-      const oldRecord = await HealthRecord.findById(healthRecordId);
-      healthRecord = oldRecord!;
       res.status(200).json({
         conversationId: conversation.id,
         message: validationResult.assistantPrompt,
@@ -148,6 +143,93 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     res.status(500).json({ message: "Internal server error", error });
   }
 });
+
+router.put(
+  "/updates/:parentHealthRecordId/:updateHealthRecordId?",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async (req: Request, res: Response): Promise<Response | any> => {
+    try {
+      let systemPrompt = "";
+      let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
+      const { parentHealthRecordId, updateHealthRecordId } = req.params;
+      const { conversationId, message } = req.body;
+
+      const parentRecord = await HealthRecord.findById(parentHealthRecordId);
+      if (!parentRecord) return res.status(404).json({ error: "Health record not found" });
+
+      let updateRecord;
+      if (updateHealthRecordId) {
+        const updateRecordTemp = await HealthRecord.findOne(
+          { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
+          {
+            "updates.$": 1,
+          }
+        );
+        if (!updateRecordTemp) return res.status(404).json({ error: "Health record update not found" });
+        updateRecord = updateRecordTemp.updates[0];
+      }
+
+      const conversation =
+        conversations.get(conversationId) || createNewConversation(prompts.system.update(updateRecord ?? parentRecord));
+      conversation.lastAccessed = Date.now();
+
+      conversation.history.push({ role: "user", content: message });
+
+      const generatedJSON = await jsonGen(conversation.history);
+      healthRecordUpdate = JSON.parse(generatedJSON);
+
+      // Third argument indicates whether this is an update (default is false)
+      const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
+
+      if (validationResult.assistantPrompt)
+        conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
+
+      if (validationResult.success) {
+        systemPrompt = validationResult?.systemPrompt ?? "";
+
+        let updatedRecord;
+        if (updateHealthRecordId) {
+          const updateFields: { [key: string]: string | number | boolean | object | undefined } = {};
+          Object.keys(healthRecordUpdate).forEach((key) => {
+            if (key !== "_id" && key !== "createdAt" && key !== "updatedAt")
+              updateFields[`updates.$[update].${key}`] = healthRecordUpdate[key as keyof typeof healthRecordUpdate];
+          });
+
+          updatedRecord = await HealthRecord.findOneAndUpdate(
+            { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
+            { $set: updateFields },
+            {
+              arrayFilters: [{ "update._id": updateHealthRecordId }],
+              new: true,
+            }
+          );
+        } else {
+          updatedRecord = await HealthRecord.findByIdAndUpdate(
+            parentHealthRecordId,
+            { $push: { updates: healthRecordUpdate } },
+            { new: true }
+          );
+        }
+
+        if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+
+        res.status(200).json({
+          conversationId: conversation.id,
+          message: validationResult.assistantPrompt,
+          healthRecord: updatedRecord,
+        });
+      } else {
+        res.status(200).json({
+          conversationId: conversation.id,
+          message: validationResult.assistantPrompt,
+        });
+      }
+      if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error", error });
+    }
+  }
+);
 
 export default router;
 
