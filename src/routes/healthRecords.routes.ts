@@ -190,15 +190,20 @@ router.put(
         // This approach is used since positional $ operator yielded conflicts with createdAt and updatedAt fields
         let updatedRecord;
         if (updateHealthRecordId) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const index = parentRecord.updates?.findIndex((update: any) => {
-            return update._id.toString() == updateHealthRecordId;
+          const updateFields: { [key: string]: string | number | boolean | object | undefined } = {};
+          Object.keys(healthRecordUpdate).forEach((key) => {
+            if (key !== "_id" && key !== "createdAt" && key !== "updatedAt")
+              updateFields[`updates.$[update].${key}`] = healthRecordUpdate[key as keyof typeof healthRecordUpdate];
           });
-          if (index === undefined || index === -1)
-            return res.status(404).json({ error: "Health record update not found" });
 
-          Object.assign(parentRecord.updates[index], healthRecordUpdate);
-          updatedRecord = await parentRecord.save();
+          updatedRecord = await HealthRecord.findOneAndUpdate(
+            { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
+            { $set: updateFields },
+            {
+              arrayFilters: [{ "update._id": updateHealthRecordId }],
+              new: true,
+            }
+          );
         } else {
           updatedRecord = await HealthRecord.findByIdAndUpdate(
             parentHealthRecordId,
