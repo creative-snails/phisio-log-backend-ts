@@ -150,6 +150,7 @@ export default {
   assistant: {
     consultations:
       "Have you had any consultations regarding your current condition? If so, please provide the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended.",
+    followUps: "Have you had any follow-up actions recommended by your consultant? If so, please provide the details.",
     symptoms:
       "You mentioned only one symptom. Are there any additional symptoms you would like to add to your health record?",
     treatments: "Have you tried any treatments on your own to manage your condition? If yes, please share the details.",

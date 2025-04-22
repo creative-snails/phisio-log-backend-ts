@@ -45,7 +45,7 @@ export async function validateHealthRecord(
     healthRecord.updatedAt = healthRecord.updatedAt ? new Date(healthRecord.updatedAt) : new Date();
   }
 
-  const { additionalSymptoms, treatmentsTried, medicalConsultations } = conversation.requestedData;
+  const { additionalSymptoms, treatmentsTried, medicalConsultations, followUps } = conversation.requestedData;
 
   try {
     const validatedRecord = isUpdate ? Z_HealthRecordUpdate.parse(healthRecord) : Z_HealthRecord.parse(healthRecord);
@@ -72,6 +72,17 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.consultations,
+        systemPrompt: prompts.system.consultaions(healthRecord),
+      };
+    }
+    if (
+      !followUps &&
+      !validatedRecord.medicalConsultations.some((consultation) => consultation.followUpActions.length > 0)
+    ) {
+      conversation.requestedData.followUps = true;
+      return {
+        success: true,
+        assistantPrompt: prompts.assistant.followUps,
         systemPrompt: prompts.system.consultaions(healthRecord),
       };
     }

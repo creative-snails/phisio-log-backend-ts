@@ -17,6 +17,7 @@ export type Conversation = {
     additionalSymptoms: boolean;
     treatmentsTried: boolean;
     medicalConsultations: boolean;
+    followUps: boolean;
   };
 };
 
@@ -31,6 +32,7 @@ const createNewConversation = (systemPrompt: string): Conversation => {
       additionalSymptoms: false,
       treatmentsTried: false,
       medicalConsultations: false,
+      followUps: false,
     },
   };
 
