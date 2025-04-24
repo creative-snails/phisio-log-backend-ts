@@ -77,7 +77,7 @@ export async function validateHealthRecord(
     }
     if (
       !followUps &&
-      !validatedRecord.medicalConsultations.some((consultation) => consultation.followUpActions.length > 0)
+      !validatedRecord.medicalConsultations[validatedRecord.medicalConsultations.length - 1]?.followUpActions.length
     ) {
       conversation.requestedData.followUps = true;
       return {
