@@ -65,14 +65,27 @@ export default {
       Use the validation errors to guide the user on what specific information is missing or incorrect. Ensure the message is polite, clear, and supportive.
     `,
     consultaions: (currentRecord: Partial<HealthRecordType>) => `
-      Based on the user input, extract the relevant information about the consultations and append them to the "medicalConsultations" array within the Current HealthRecord object.
-      - Retain all the data already existing in the current health record.
-      - Focus on extracting and appending the following consultation details:
-        - consultant: Extract the name of the consultant.
-        - date: Extract the date of the consultation.
-        - diagnosis: Summarize and clean up the diagnosis provided.
-        - followUpActions: Extract any follow-up actions recommended. If there are multiple, list them separately.
-      - If data is missing, leave fields empty. Ignore missing details.
+      Based on the user input, extract **only medically relevant consultation information** and append it to the "medicalConsultations" array within the current health record.
+
+      Rules:
+      - Keep all data already present in the current health record unchanged.
+      - Do not assume or fabricate information — extract only what is stated.
+      - Leave any missing fields empty.
+      - If the user mentions multiple consultations, create a new entry for each one in the "medicalConsultations" array.
+
+     Keep in mind difference between diagnosis and follow-up actions:
+      - **Diagnosis**: The medical condition(s) diagnosed by the consultant such as "hypertension", "diabetes", "concussion", etc. Do not include any treatment advice, recommendations or follow-ups here.
+      - **Follow-up actions**: Any advice, actions, follow-ups or treatments the consultant recommended such as "rest", "use painkillers", "follow-up in 2 weeks", etc.
+
+      For each consultation, extract the following:
+      1. **consultant**: The name or title of the doctor or specialist consulted.
+      2. **date**: The date the consultation occurred (or leave empty if not provided).
+      3. **diagnosis**:
+        - Having in mind distinction between 'diagnosis' and 'follow-up actions' mentioned above, please include only the medical condition(s) diagnosed by the consultant. Do *not* include any treatment advice, recommendations or follow-ups here!
+        - Summarize and clean up the diagnosis.
+      4. **followUpActions**:
+        - Having in mind distinction between 'diagnosis' and 'follow-up actions' mentioned above, please extract any advice, actions, follow-ups or treatments the consultant recommended.
+        - If multiple are mentioned, list each one separately in the array.
 
       Zod Schema
       const Z_MedicalConsultation = z.object({
