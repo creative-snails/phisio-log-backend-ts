@@ -115,10 +115,12 @@ export default {
       Don't update single value entries that were already generated if not needed:
       ${JSON.stringify(currentRecord)}
 
-      Identify and extract any follow-up actions mentioned by the user in relation to the medical consultation at index ${index}.
+      Identify and extract any follow-up actions mentioned by the user and add them to the "followUpActions" array for the consultation at index ${index}.
       - Even if the user does not explicitly mention a follow-up action, extract any information that implies follow-up care, treatment, or recommendations.
       - If multiple follow-up actions are mentioned, create a new entry for each one in the "followUpActions" array.
       - If no follow-up actions are mentioned, leave the array empty.
+      - Be careful not to overwrite previously captured values unless the user explicitly updates them.
+      - Assume that if a follow-up action was already prompted for and remains empty, the user intentionally left it that way.
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
       Based on the user's description and the conversation history, generate a JSON object that accurately matches the Zod schema.
