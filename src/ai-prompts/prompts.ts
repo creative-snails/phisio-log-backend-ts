@@ -46,7 +46,7 @@ export default {
     ${JSON.stringify(currentRecord)}
 
     - Extract any tried treatments provided by the user. If treatments are not mentioned, leave the field empty.
-    - Do not force extraction if the information is not clearly present
+    - Do not force extraction if the information is not clearly present.
     `,
     symptoms: (currentRecord: Partial<HealthRecordType>) => `
       This was your output, update it to iclude the new requirements.
@@ -73,19 +73,15 @@ export default {
       - Leave any missing fields empty.
       - If the user mentions multiple consultations, create a new entry for each one in the "medicalConsultations" array.
 
-     Keep in mind difference between diagnosis and follow-up actions:
-      - **Diagnosis**: The medical condition(s) diagnosed by the consultant such as "hypertension", "diabetes", "concussion", etc. Do not include any treatment advice, recommendations or follow-ups here.
-      - **Follow-up actions**: Any advice, actions, follow-ups or treatments the consultant recommended such as "rest", "use painkillers", "follow-up in 2 weeks", etc.
-
       For each consultation, extract the following:
-      1. **consultant**: The name or title of the doctor or specialist consulted.
-      2. **date**: The date the consultation occurred (or leave empty if not provided).
-      3. **diagnosis**:
-        - Having in mind distinction between 'diagnosis' and 'follow-up actions' mentioned above, please include only the medical condition(s) diagnosed by the consultant. Do *not* include any treatment advice, recommendations or follow-ups here!
-        - Summarize and clean up the diagnosis.
+      1. **consultant**: The name along with any relevant details about the consultant (e.g., "Dr. Smith, cardiologist").
+      2. **date**: The date the consultation occurred.
+      3. **diagnosis**: Include only the medical condition(s) diagnosed by the consultant. Do not include any advice or follow-up actions in this field.
       4. **followUpActions**:
-        - Having in mind distinction between 'diagnosis' and 'follow-up actions' mentioned above, please extract any advice, actions, follow-ups or treatments the consultant recommended.
+        - Extract any follow-up actions or recommendations provided by the consultant.
         - If multiple are mentioned, list each one separately in the array.
+
+      Clean up and summarize the extracted data, correcting any typos or inconsistent phrasing before adding it to the final JSON.
 
       Zod Schema
       const Z_MedicalConsultation = z.object({
@@ -113,6 +109,16 @@ export default {
           }
         ]
       }
+    `,
+    followUps: (currentRecord: Partial<HealthRecordType>) => `
+      This is your output, update it to iclude the new requirements.
+      Don't update single value entries that were already generated if not needed:
+      ${JSON.stringify(currentRecord)}
+
+      Extract any follow-up actions or recommendations provided by the consultant.
+      - If multiple follow-up actions are mentioned, create a new entry for each one in the "followUpActions" array.
+      - If no follow-up actions are found, leave the array as is.
+      - Do not force extraction if the information is not clearly present.
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
       Based on the user's description and the conversation history, generate a JSON object that accurately matches the Zod schema.

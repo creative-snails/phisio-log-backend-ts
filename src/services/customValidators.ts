@@ -83,7 +83,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.followUps,
-        systemPrompt: prompts.system.consultations(healthRecord),
+        systemPrompt: prompts.system.followUps(healthRecord),
       };
     }
 
