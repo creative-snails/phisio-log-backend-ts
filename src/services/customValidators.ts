@@ -72,7 +72,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.consultations,
-        systemPrompt: prompts.system.consultaions(healthRecord),
+        systemPrompt: prompts.system.consultations(healthRecord),
       };
     }
     if (
@@ -83,7 +83,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.followUps,
-        systemPrompt: prompts.system.consultaions(healthRecord),
+        systemPrompt: prompts.system.consultations(healthRecord),
       };
     }
 

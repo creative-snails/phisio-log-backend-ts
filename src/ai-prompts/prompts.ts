@@ -64,7 +64,7 @@ export default {
       'Please provide the following information to complete the health record:'
       Use the validation errors to guide the user on what specific information is missing or incorrect. Ensure the message is polite, clear, and supportive.
     `,
-    consultaions: (currentRecord: Partial<HealthRecordType>) => `
+    consultations: (currentRecord: Partial<HealthRecordType>) => `
       Based on the user input, extract **only medically relevant consultation information** and append it to the "medicalConsultations" array within the current health record.
 
       Rules:
