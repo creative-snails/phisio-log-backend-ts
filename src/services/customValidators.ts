@@ -76,16 +76,17 @@ export async function validateHealthRecord(
       };
     }
 
-    for (let i = 0; i < validatedRecord.medicalConsultations.length; i++) {
-      const consultation = validatedRecord.medicalConsultations[i];
-      if (!followUps?.[i] && !consultation.followUpActions.length) {
-        followUps[i] = true;
-        return {
-          success: true,
-          assistantPrompt: prompts.assistant.followUps(i),
-          systemPrompt: prompts.system.followUps(healthRecord, i),
-        };
-      }
+    const isSingleConsultation = validatedRecord.medicalConsultations.length === 1;
+    const index = validatedRecord.medicalConsultations.findIndex(
+      (consultation, i) => !followUps?.[i] && !consultation.followUpActions.length
+    );
+    if (index !== -1) {
+      followUps[index] = true;
+      return {
+        success: true,
+        assistantPrompt: prompts.assistant.followUps(isSingleConsultation ? null : index),
+        systemPrompt: prompts.system.followUps(healthRecord, index),
+      };
     }
 
     return { success: true };

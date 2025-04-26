@@ -78,7 +78,7 @@ export default {
       2. **date**: The date the consultation occurred.
       3. **diagnosis**: Include only the medical condition(s) diagnosed by the consultant. Do not include any advice or follow-up actions in this field.
       4. **followUpActions**:
-        - Extract any follow-up actions provided by the consultant, including treatments, recommendations, advice, and follow-up care.
+        - Extract all follow-up actions recommended by the consultant, including treatments, scheduled appointments, care recommendations, and any other instructions related to ongoing or future care.
         - If multiple are mentioned, create a new entry for each one in the array.
 
       Clean up and summarize the extracted data, correcting any typos or inconsistent phrasing before adding it to the final JSON.
@@ -110,16 +110,16 @@ export default {
         ]
       }
     `,
-    followUps: (currentRecord: Partial<HealthRecordType>, index: number) => `
+    followUps: (currentRecord: Partial<HealthRecordType>, consultationIndex: number) => `
       This is your output, update it to iclude the new requirements.
       Don't update single value entries that were already generated if not needed:
       ${JSON.stringify(currentRecord)}
 
-      Identify and extract any follow-up actions mentioned by the user and add them to the "followUpActions" array for the consultation at index ${index}.
-      - Even if the user does not explicitly mention a follow-up action, extract any information that implies follow-up care, treatment, or recommendations.
+      Identify and extract any follow-up actions mentioned by the user and add them to the "followUpActions" array for the consultation at index ${consultationIndex} of the "medicalConsultations" array.
+      - Keep in mind that "medicalConsultations" array is zero-indexed. You're strictly not allowed to update followUpActions at any other index of "medicalConsultations" array that is not ${consultationIndex}, no matter how you interpret the user input.
+      - Even if the user does not explicitly mention a follow-up action, extract any information that implies follow-up care such as appointments, treatments, or recommendations.
       - If multiple follow-up actions are mentioned, create a new entry for each one in the "followUpActions" array.
       - If no follow-up actions are mentioned, leave the array empty.
-      - Be careful not to overwrite previously captured values unless the user explicitly updates them.
       - Assume that if a follow-up action was already prompted for and remains empty, the user intentionally left it that way.
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
@@ -171,8 +171,10 @@ export default {
   assistant: {
     consultations:
       "Have you had any consultations regarding your current condition? If so, please provide the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended.",
-    followUps: (index: number) =>
-      `Have you had any follow-up actions recommended by your consultant for the consultation number ${index + 1}? If so, please provide the details.`,
+    followUps: (consultationIndex: number | null) =>
+      consultationIndex !== null
+        ? `Have you had any follow-up actions recommended by your consultant for the consultation number ${consultationIndex + 1}? If so, please provide the details.`
+        : "Have you had any follow-up actions recommended by your consultant? If so, please provide the details.",
     symptoms:
       "You mentioned only one symptom. Are there any additional symptoms you would like to add to your health record?",
     treatments: "Have you tried any treatments on your own to manage your condition? If yes, please share the details.",
