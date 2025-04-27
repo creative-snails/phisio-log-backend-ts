@@ -7,6 +7,7 @@ import {
   Z_HealthRecordUpdate,
 } from "../models/health-record/healthRecordValidation";
 import { Conversation } from "../routes/healthRecords.routes";
+import { indexToNatural } from "../utils/helpers";
 import { textGen } from "./genAI";
 
 interface ValidationHelathRecordReturn {
@@ -76,15 +77,15 @@ export async function validateHealthRecord(
       };
     }
 
-    const isSingleConsultation = validatedRecord.medicalConsultations.length === 1;
     const index = validatedRecord.medicalConsultations.findIndex(
       (consultation, i) => !followUps?.[i] && !consultation.followUpActions.length
     );
     if (index !== -1) {
       followUps[index] = true;
+      const consultationOrder = validatedRecord.medicalConsultations.length > 1 ? indexToNatural(index) : "";
       return {
         success: true,
-        assistantPrompt: prompts.assistant.followUps(isSingleConsultation ? null : index),
+        assistantPrompt: prompts.assistant.followUps(consultationOrder),
         systemPrompt: prompts.system.followUps(healthRecord, index),
       };
     }

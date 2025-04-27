@@ -1,4 +1,5 @@
 import { HealthRecordType } from "../models/health-record/healthRecordValidation";
+import { indexToNatural } from "../utils/helpers";
 
 export default {
   system: {
@@ -115,12 +116,11 @@ export default {
       Don't update single value entries that were already generated if not needed:
       ${JSON.stringify(currentRecord)}
 
-      Identify and extract any follow-up actions mentioned by the user and add them to the "followUpActions" array for the consultation at index ${consultationIndex} of the "medicalConsultations" array.
-      - Keep in mind that "medicalConsultations" array is zero-indexed. You're strictly not allowed to update followUpActions at any other index of "medicalConsultations" array that is not ${consultationIndex}, no matter how you interpret the user input.
+      Identify and extract any follow-up actions mentioned by the user. Add them only to the "followUpActions" array for the ${indexToNatural(consultationIndex)} consultation.
       - Even if the user does not explicitly mention a follow-up action, extract any information that implies follow-up care such as appointments, treatments, or recommendations.
       - If multiple follow-up actions are mentioned, create a new entry for each one in the "followUpActions" array.
       - If no follow-up actions are mentioned, leave the array empty.
-      - Assume that if a follow-up action was already prompted for and remains empty, the user intentionally left it that way.
+      - Assume that, if a follow-up action was already prompted for and remains empty, the user intentionally left it that way.
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
       Based on the user's description and the conversation history, generate a JSON object that accurately matches the Zod schema.
@@ -171,10 +171,11 @@ export default {
   assistant: {
     consultations:
       "Have you had any consultations regarding your current condition? If so, please provide the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended.",
-    followUps: (consultationIndex: number | null) =>
-      consultationIndex !== null
-        ? `Have you had any follow-up actions recommended by your consultant for the consultation number ${consultationIndex + 1}? If so, please provide the details.`
-        : "Have you had any follow-up actions recommended by your consultant? If so, please provide the details.",
+    followUps: (consultationOrder: string) =>
+      `Have you had any follow-up actions recommended by your consultant${
+        consultationOrder ? ` for the ${consultationOrder} consultation` : ""
+      }? If so, please provide the details.`,
+
     symptoms:
       "You mentioned only one symptom. Are there any additional symptoms you would like to add to your health record?",
     treatments: "Have you tried any treatments on your own to manage your condition? If yes, please share the details.",
