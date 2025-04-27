@@ -65,7 +65,11 @@ export const Z_HealthRecordUpdate = z.object({
     .optional()
     .default([]),
   improvementStatus: z.enum(IMPROVEMENT_STATUS).optional().default("stable"),
-  medicalConsultations: z.array(Z_MedicalConsultation).optional().default([]),
+  medicalConsultations: z
+    .array(Z_MedicalConsultation)
+    .max(10, "You can only have up to 10 medical consultations.")
+    .optional()
+    .default([]),
   severity: z.enum(SEVERITY_TYPES).optional().default("variable"),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
