@@ -3,3 +3,15 @@ export function indexToNatural(index: number): string {
   if (index < 0 || index >= naturalOrder.length) return "";
   return naturalOrder[index];
 }
+
+export function removeStaleConversations(conversations: Map<string, { lastAccessed: number }>, maxAge: number) {
+  const now = Date.now();
+  try {
+    conversations.forEach((conversation, id) => {
+      if (now - conversation.lastAccessed > maxAge) conversations.delete(id);
+    });
+    console.log("Stale conversations successfully removed.");
+  } catch (error) {
+    console.log("Removing stale conversations failed: ", error);
+  }
+}

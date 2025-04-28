@@ -6,6 +6,15 @@ import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
+import { removeStaleConversations } from "../utils/helpers";
+
+const MAX_CONVERSATION_AGE = 24 * 60 * 60 * 1000;
+
+// Runs at the start of every hour
+schedule("0 * * * *", () => removeStaleConversations(conversations, MAX_CONVERSATION_AGE), {
+  scheduled: true,
+  timezone: "UTC",
+});
 
 const router = Router();
 
@@ -234,23 +243,3 @@ router.put(
 );
 
 export default router;
-
-const cleanup = () => {
-  const MAX_AGE = 24 * 60 * 60 * 1000;
-  const now = Date.now();
-
-  try {
-    conversations.forEach((conversation, id) => {
-      if (now - conversation.lastAccessed > MAX_AGE) conversations.delete(id);
-    });
-    console.log("Cleanup completed successfully");
-  } catch (error) {
-    console.log("Cleanup failed: ", error);
-  }
-};
-
-// Runs at the start of every hour
-schedule("0 * * * *", cleanup, {
-  scheduled: true,
-  timezone: "UTC",
-});
