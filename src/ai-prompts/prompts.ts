@@ -11,6 +11,7 @@ export default {
       - Extract only clear, medically relevant details from the user's input. Disregard any vague, unrelated, non-medical, or ambiguous information.
       - If any required fields are missing and have no default in the Zod schema, leave those fields empty.
       - Be aware that today's date is ${new Date()}. Ensure no future dates are assigned to any date field.
+      - When multiple "user" messages exist in the conversation history, integrate the medically relevant information from all messages according to the extraction and formatting guidelines to generate unified JSON object.
       - Summarize and clean up all extracted data, correcting typos and inconsistent phrasing before adding it to the final JSON.
 
       Zod Schema
