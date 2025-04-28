@@ -6,7 +6,7 @@ import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
-import { removeStaleConversations } from "../utils/helpers";
+import { cleanUpPrompts, removeStaleConversations } from "../utils/helpers";
 
 const MAX_CONVERSATION_AGE = 24 * 60 * 60 * 1000;
 
@@ -82,6 +82,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
         message: validationResult.assistantPrompt,
         healthRecord,
       });
+      conversation.history.push({ role: "system", content: systemPrompt });
     } else {
       res.status(200).json({
         conversationId: conversation.id,
@@ -91,7 +92,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
 
     if (!healthRecord.updates?.length) delete healthRecord.updates;
 
-    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
+    conversation.history = cleanUpPrompts(conversation.history);
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
@@ -150,6 +151,7 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     }
 
     if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
+    console.log("CONVERSATION HISTORY 2: ", conversation.history);
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
