@@ -13,6 +13,7 @@ export type Conversation = {
   id: string;
   history: Message[];
   lastAccessed: number;
+  healthRecordId?: string; // new prop
   requestedData: {
     additionalSymptoms: boolean;
     treatmentsTried: boolean;
@@ -23,11 +24,12 @@ export type Conversation = {
 
 const conversations = new Map<string, Conversation>();
 
-const createNewConversation = (systemPrompt: string): Conversation => {
+const createNewConversation = (systemPrompt: string, healthRecordId?: string): Conversation => {
   const conversation: Conversation = {
     id: uuidv4(),
     history: [{ role: "system", content: systemPrompt }],
     lastAccessed: Date.now(),
+    healthRecordId, // new prop
     requestedData: {
       additionalSymptoms: false,
       treatmentsTried: false,
@@ -171,8 +173,13 @@ router.put(
         updateRecord = updateRecordTemp.updates[0];
       }
 
-      const conversation =
-        conversations.get(conversationId) || createNewConversation(prompts.system.update(updateRecord ?? parentRecord));
+      let conversation = conversations.get(conversationId);
+
+      conversation =
+        conversation && conversation?.healthRecordId === updateHealthRecordId
+          ? conversation
+          : createNewConversation(prompts.system.update(updateRecord ?? parentRecord), updateHealthRecordId);
+
       conversation.lastAccessed = Date.now();
 
       conversation.history.push({ role: "user", content: message });
