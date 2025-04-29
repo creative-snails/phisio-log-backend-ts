@@ -77,12 +77,13 @@ export async function validateHealthRecord(
       };
     }
 
-    const index = validatedRecord.medicalConsultations.findIndex((consultation, i) => {
-      if (!followUps?.[i]) {
-        if (!consultation.followUpActions.length) return true;
-        followUps[i] = true;
+    const index = validatedRecord.medicalConsultations.findIndex((consultation, index) => {
+      if (followUps[index]) return false;
+      if (consultation.followUpActions.length) {
+        followUps[index] = true;
+        return false;
       }
-      return false;
+      return true;
     });
     if (index !== -1) {
       followUps[index] = true;
