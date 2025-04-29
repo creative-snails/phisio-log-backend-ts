@@ -77,20 +77,27 @@ export async function validateHealthRecord(
       };
     }
 
-    const index = validatedRecord.medicalConsultations.findIndex((consultation, i) => {
-      if (!followUps?.[i]) {
-        if (!consultation.followUpActions.length) return true;
-        followUps[i] = true;
+    const consultationIndex = validatedRecord.medicalConsultations.findIndex((consultation, index) => {
+      // Skip if we already prompted for follow-ups or user provided them
+      if (followUps[index]) return false;
+
+      // If consultation has follow-ups, mark it tracked and skip
+      if (consultation.followUpActions.length) {
+        followUps[index] = true;
+        return false;
       }
-      return false;
+      // Found a consultation without follow-ups that needs prompting
+      return true;
     });
-    if (index !== -1) {
-      followUps[index] = true;
-      const consultationOrder = validatedRecord.medicalConsultations.length > 1 ? indexToNatural(index) : "";
+
+    if (consultationIndex !== -1) {
+      followUps[consultationIndex] = true;
+      const consultationOrder =
+        validatedRecord.medicalConsultations.length > 1 ? indexToNatural(consultationIndex) : "";
       return {
         success: true,
         assistantPrompt: prompts.assistant.followUps(consultationOrder),
-        systemPrompt: prompts.system.followUps(healthRecord, index),
+        systemPrompt: prompts.system.followUps(healthRecord, consultationIndex),
       };
     }
 
