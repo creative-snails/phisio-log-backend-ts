@@ -1,4 +1,5 @@
 import { HealthRecordType } from "../models/health-record/healthRecordValidation";
+import { indexToNatural } from "../utils/helpers";
 
 export default {
   system: {
@@ -6,7 +7,7 @@ export default {
       Based on the user description, generate a JSON object that accurately matches the Zod schema.
       - For "description": summarize, clean up, and correct mistakes before adding it to the JSON. Do not include any placeholder text, meaningless phrases or unrelated information in the description.
       - For fields "status", "improvementStatus", and "severity", interpret the description and select a value from their respective accepted options. These fields have default values and are not required, so if the information is not clearly present, use the default values.
-      - For "symptoms": extract at least one symptom **only if** it is clearly related to a medical or physical condition. If multiple unrelated symptoms are mentioned, create separate entries rather than grouping them. If no valid symptoms are found, leave the field empty.
+      - For "symptoms": extract all symptoms that are clearly related to a medical or physical condition. If multiple unrelated symptoms are mentioned, create separate entries rather than grouping them. If no valid symptoms are found, leave the field empty.
       - Extract only clear, medically relevant details from the user's input. Disregard any vague, unrelated, non-medical, or ambiguous information.
       - If any required fields are missing and have no default in the Zod schema, leave those fields empty.
       - Be aware that today's date is ${new Date()}. Ensure no future dates are assigned to any date field.
@@ -46,7 +47,7 @@ export default {
     ${JSON.stringify(currentRecord)}
 
     - Extract any tried treatments provided by the user. If treatments are not mentioned, leave the field empty.
-    - Do not force extraction if the information is not clearly present
+    - Do not force extraction if the information is not clearly present.
     `,
     symptoms: (currentRecord: Partial<HealthRecordType>) => `
       This was your output, update it to iclude the new requirements.
@@ -64,15 +65,24 @@ export default {
       'Please provide the following information to complete the health record:'
       Use the validation errors to guide the user on what specific information is missing or incorrect. Ensure the message is polite, clear, and supportive.
     `,
-    consultaions: (currentRecord: Partial<HealthRecordType>) => `
-      Based on the user input, extract the relevant information about the consultations and append them to the "medicalConsultations" array within the Current HealthRecord object.
-      - Retain all the data already existing in the current health record.
-      - Focus on extracting and appending the following consultation details:
-        - consultant: Extract the name of the consultant.
-        - date: Extract the date of the consultation.
-        - diagnosis: Summarize and clean up the diagnosis provided.
-        - followUpActions: Extract any follow-up actions recommended. If there are multiple, list them separately.
-      - If data is missing, leave fields empty. Ignore missing details.
+    consultations: (currentRecord: Partial<HealthRecordType>) => `
+      Based on the user input, extract **only medically relevant consultation information** and append it to the "medicalConsultations" array within the current health record.
+
+      Rules:
+      - Keep all data already present in the current health record unchanged.
+      - Do not assume or fabricate information — extract only what is stated.
+      - Leave any missing fields empty.
+      - If the user mentions multiple consultations, create a new entry for each one in the "medicalConsultations" array.
+
+      For each consultation, extract the following:
+      1. **consultant**: The name along with any relevant details about the consultant (e.g., "Dr. Smith, cardiologist").
+      2. **date**: The date the consultation occurred.
+      3. **diagnosis**: Include only the medical condition(s) diagnosed by the consultant. Do not include any advice or follow-up actions in this field.
+      4. **followUpActions**:
+        - Extract all follow-up actions recommended by the consultant, including treatments, scheduled appointments, care recommendations, and any other instructions related to ongoing or future care.
+        - If multiple are mentioned, create a new entry for each one in the array.
+
+      Clean up and summarize the extracted data, correcting any typos or inconsistent phrasing before adding it to the final JSON.
 
       Zod Schema
       const Z_MedicalConsultation = z.object({
@@ -100,6 +110,17 @@ export default {
           }
         ]
       }
+    `,
+    followUps: (currentRecord: Partial<HealthRecordType>, consultationIndex: number) => `
+      This is your output, update it to iclude the new requirements.
+      Don't update single value entries that were already generated if not needed:
+      ${JSON.stringify(currentRecord)}
+
+      Identify and extract any follow-up actions mentioned by the user. Add them only to the "followUpActions" array for the ${indexToNatural(consultationIndex)} consultation.
+      - Even if the user does not explicitly mention a follow-up action, extract any information that implies follow-up care such as appointments, treatments, or recommendations.
+      - If multiple follow-up actions are mentioned, create a new entry for each one in the "followUpActions" array.
+      - If no follow-up actions are mentioned, leave the array empty.
+      - Assume that, if a follow-up action was already prompted for and remains empty, the user intentionally left it that way.
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
       Based on the user's description and the conversation history, generate a JSON object that accurately matches the Zod schema.
@@ -150,6 +171,11 @@ export default {
   assistant: {
     consultations:
       "Have you had any consultations regarding your current condition? If so, please provide the name of the consultant, the date of the consultation, the diagnosis, and any follow-up actions recommended.",
+    followUps: (consultationOrder: string) =>
+      `Have you had any follow-up actions recommended by your consultant${
+        consultationOrder ? ` for the ${consultationOrder} consultation` : ""
+      }? If so, please provide the details.`,
+
     symptoms:
       "You mentioned only one symptom. Are there any additional symptoms you would like to add to your health record?",
     treatments: "Have you tried any treatments on your own to manage your condition? If yes, please share the details.",
