@@ -6,7 +6,7 @@ import HealthRecord from "../models/health-record/healthRecord";
 import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
-import { cleanUpPrompts, removeStaleConversations } from "../utils/helpers";
+import { getConversation, removeStaleConversations } from "../utils/helpers";
 
 const MAX_CONVERSATION_AGE = 24 * 60 * 60 * 1000;
 
@@ -55,8 +55,9 @@ router.post("/new-record", async (req: Request, res: Response) => {
     let healthRecord: Partial<HealthRecordType> = {};
     const { conversationId, message } = req.body;
 
-    const conversation = conversations.get(conversationId) || createNewConversation(prompts.system.init);
-    conversation.lastAccessed = Date.now();
+    const conversation = getConversation(conversations, conversationId) || createNewConversation(prompts.system.init);
+
+    console.log("\n\nCONVERSATION HISTORY post FIRST: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
 
     conversation.history.push({ role: "user", content: message });
 
@@ -82,7 +83,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
         message: validationResult.assistantPrompt,
         healthRecord,
       });
-      conversation.history.push({ role: "system", content: systemPrompt });
+      if (validationResult?.systemPrompt) conversation.history.push({ role: "system", content: systemPrompt });
     } else {
       res.status(200).json({
         conversationId: conversation.id,
@@ -90,9 +91,7 @@ router.post("/new-record", async (req: Request, res: Response) => {
       });
     }
 
-    if (!healthRecord.updates?.length) delete healthRecord.updates;
-
-    conversation.history = cleanUpPrompts(conversation.history);
+    console.log("\n\nCONVERSATION HISTORY post LAST: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
@@ -109,8 +108,10 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     if (!conversationId || !healthRecordId)
       return res.status(400).json({ error: "Both conversationId and healthRecordId are required" });
 
-    const conversation = conversations.get(conversationId);
+    const conversation = getConversation(conversations, conversationId);
     if (!conversation) return res.status(404).json({ error: "Conversation not found" });
+
+    console.log("\n\nCONVERSATION HISTORY put FIRST: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
 
     const existingRecrod = await HealthRecord.findById(healthRecordId);
     if (!existingRecrod) return res.status(404).json({ error: "Health record not found" });
@@ -121,8 +122,7 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
       { role: "system", content: prompts.system.update(healthRecord) },
       { role: "user", content: message }
     );
-    conversation.lastAccessed = Date.now();
-
+    console.log("\n\nCONVERSATION HISTORY put MID: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
     const validationResult = await validateHealthRecord(healthRecord, conversation);
@@ -151,7 +151,7 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     }
 
     if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
-    console.log("CONVERSATION HISTORY 2: ", conversation.history);
+    console.log("CONVERSATION HISTORY put LAST: ", conversation.history);
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
@@ -183,8 +183,8 @@ router.put(
       }
 
       const conversation =
-        conversations.get(conversationId) || createNewConversation(prompts.system.update(updateRecord ?? parentRecord));
-      conversation.lastAccessed = Date.now();
+        getConversation(conversations, conversationId) ||
+        createNewConversation(prompts.system.update(updateRecord ?? parentRecord));
 
       conversation.history.push({ role: "user", content: message });
 
