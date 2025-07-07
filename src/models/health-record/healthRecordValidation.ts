@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  IMPROVEMENT_STATUS,
   MAX_CHAR_LONG,
   MAX_CHAR_MEDIUM,
   MAX_CHAR_SHORT,
@@ -8,9 +7,29 @@ import {
   MIN_CHAR_SHORT,
   maxValidationMessage,
   minValidationMessage,
-  SEVERITY_TYPES,
-  STATUS_TYPES,
 } from "./healthRecordService";
+
+export const Z_Stage = z.enum(["open", "closed", "in-progress"]);
+export const Z_Severity = z.enum(["mild", "moderate", "severe", "variable"]);
+export const Z_Progression = z.enum(["improving", "stable", "worsening", "variable"]);
+
+const Z_LabeledEnumOption = <T extends z.ZodTypeAny>(enumSchema: T) =>
+  z.object({
+    label: z.string(),
+    value: enumSchema,
+  });
+
+export const Z_StatusOptions = z.object({
+  stage: z.array(Z_LabeledEnumOption(Z_Stage)),
+  severity: z.array(Z_LabeledEnumOption(Z_Severity)),
+  progression: z.array(Z_LabeledEnumOption(Z_Progression)),
+});
+
+export const Z_Status = z.object({
+  stage: Z_Stage,
+  severity: Z_Severity,
+  progression: Z_Progression,
+});
 
 export const Z_Description = z
   .string()
@@ -55,7 +74,13 @@ const Z_MedicalConsultation = z.object({
 export const Z_HealthRecordUpdate = z.object({
   description: Z_Description.optional(),
   symptoms: z.array(Z_Symptom).optional().default([]),
-  status: z.enum(STATUS_TYPES).optional().default("open"),
+  status: z
+    .object({
+      stage: Z_Stage.optional(),
+      severity: Z_Severity.optional(),
+      progression: Z_Progression.optional(),
+    })
+    .optional(),
   treatmentsTried: z
     .array(
       z
@@ -90,7 +115,11 @@ export const Z_HealthRecord = z.object({
   //   .default("me"),
   description: Z_Description,
   symptoms: z.array(Z_Symptom).min(1, "At least one symptom is required"),
-  status: z.enum(STATUS_TYPES).optional().default("open"),
+  status: z.object({
+    stage: Z_Stage,
+    severity: Z_Severity,
+    progression: Z_Progression,
+  }),
   treatmentsTried: z
     .array(
       z
