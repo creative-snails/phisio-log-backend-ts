@@ -94,17 +94,11 @@ export const Z_HealthRecordUpdate = z.object({
     )
     .optional()
     .default([]),
-  //Double check this needs to be removed
-  // improvementStatus: z.enum(IMPROVEMENT_STATUS).optional().default("stable"),
   medicalConsultations: z
     .array(Z_MedicalConsultation)
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
-  //Double check this needs to be removed
-  // severity: z.enum(SEVERITY_TYPES).optional().default("variable"),
-  // createdAt: z.date().optional(),
-  // updatedAt: z.date().optional(),
 });
 
 export const Z_HealthRecord = z.object({
@@ -132,15 +126,11 @@ export const Z_HealthRecord = z.object({
     )
     .optional()
     .default([]),
-  //Double check this needs to be removed
-  // improvementStatus: z.enum(IMPROVEMENT_STATUS).optional().default("stable"),
   medicalConsultations: z
     .array(Z_MedicalConsultation)
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
-  //Double check this needs to be removed
-  // severity: z.enum(SEVERITY_TYPES).optional().default("variable"),
   updates: z.array(Z_HealthRecordUpdate).optional().default([]),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
