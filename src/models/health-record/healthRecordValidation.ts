@@ -108,14 +108,13 @@ export const Z_HealthRecordUpdate = z.object({
 });
 
 export const Z_HealthRecord = z.object({
-  //Double check this needs to be removed
-  // user: z
-  //   .string()
-  //   .trim()
-  //   .min(2, minValidationMessage("User", 2))
-  //   .max(MAX_CHAR_SHORT, maxValidationMessage("User", MAX_CHAR_SHORT))
-  //   .optional()
-  //   .default("me"),
+  user: z
+    .string()
+    .trim()
+    .min(2, minValidationMessage("User", 2))
+    .max(MAX_CHAR_SHORT, maxValidationMessage("User", MAX_CHAR_SHORT))
+    .optional()
+    .default("me"),
   description: Z_Description,
   symptoms: z.array(Z_Symptom).min(1, "At least one symptom is required"),
   status: z.object({
