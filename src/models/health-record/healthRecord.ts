@@ -84,6 +84,11 @@ const updateSchema = new Schema<HealthRecordUpdateType>(
 
 const recordSchema = new Schema<HealthRecordType>(
   {
+    user: {
+      type: String,
+      default: "me",
+      //required: true,
+    },
     description: {
       type: String,
       required: true,
