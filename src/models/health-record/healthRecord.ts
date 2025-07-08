@@ -98,7 +98,7 @@ const recordSchema = new Schema<HealthRecordType>(
       type: [symptomSchema],
       required: true,
       validate: {
-        validator: (symptoms: unknown[]) => symptoms.length > 0,
+        validator: (symptoms: string[]) => symptoms.length > 0,
         message: "At least one symptom is required",
       },
     },
