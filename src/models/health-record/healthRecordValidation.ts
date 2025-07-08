@@ -5,13 +5,16 @@ import {
   MAX_CHAR_SHORT,
   MIN_CHAR_MEDIUM,
   MIN_CHAR_SHORT,
+  STAGE_TYPES,
+  SEVERITY_TYPES,
+  PROGRESSION_TYPES,
   maxValidationMessage,
   minValidationMessage,
 } from "./healthRecordService";
 
-export const Z_Stage = z.enum(["open", "closed", "in-progress"]);
-export const Z_Severity = z.enum(["mild", "moderate", "severe", "variable"]);
-export const Z_Progression = z.enum(["improving", "stable", "worsening", "variable"]);
+export const Z_Stage = z.enum(STAGE_TYPES);
+export const Z_Severity = z.enum(SEVERITY_TYPES);
+export const Z_Progression = z.enum(PROGRESSION_TYPES);
 
 const Z_LabeledEnumOption = <T extends z.ZodTypeAny>(enumSchema: T) =>
   z.object({

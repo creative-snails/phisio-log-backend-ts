@@ -22,7 +22,7 @@ const statusSchema = new Schema(
       required: true,
     },
   },
-  { _id: false } // Prevent creation of a new _id field for nested schemas
+  { _id: false }
 );
 
 const symptomSchema = new Schema({
