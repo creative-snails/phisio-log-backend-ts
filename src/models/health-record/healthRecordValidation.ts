@@ -112,9 +112,9 @@ export const Z_HealthRecord = z.object({
   description: Z_Description,
   symptoms: z.array(Z_Symptom).min(1, "At least one symptom is required"),
   status: z.object({
-    stage: Z_Stage,
-    severity: Z_Severity,
-    progression: Z_Progression,
+    stage: Z_Stage.optional(),
+    severity: Z_Severity.optional(),
+    progression: Z_Progression.optional(),
   }),
   treatmentsTried: z
     .array(

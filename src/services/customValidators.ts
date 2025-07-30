@@ -20,7 +20,7 @@ interface ValidationHelathRecordReturn {
 const MINIMUM_SYMPTOMS = 2;
 
 export async function validateHealthRecord(
-  healthRecord: Partial<HealthRecordType | HealthRecordUpdateType>,
+  healthRecord: Partial<HealthRecordType> | Partial<HealthRecordUpdateType>,
   conversation: Conversation,
   isUpdate?: boolean
 ): Promise<ValidationHelathRecordReturn> {
@@ -39,11 +39,12 @@ export async function validateHealthRecord(
     }));
   }
 
-  if (healthRecord?.createdAt) {
-    healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
+  if ("createdAt" in healthRecord && healthRecord.createdAt) {
+    healthRecord.createdAt = new Date(healthRecord.createdAt);
   }
-  if (healthRecord?.updatedAt) {
-    healthRecord.updatedAt = healthRecord.updatedAt ? new Date(healthRecord.updatedAt) : new Date();
+
+  if ("updatedAt" in healthRecord && healthRecord.updatedAt) {
+    healthRecord.updatedAt = new Date(healthRecord.updatedAt);
   }
 
   const { additionalSymptoms, treatmentsTried, medicalConsultations, followUps } = conversation.requestedData;
@@ -57,7 +58,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.symptoms,
-        systemPrompt: prompts.system.symptoms(healthRecord),
+        systemPrompt: prompts.system.symptoms(validatedRecord as Partial<HealthRecordType>),
       };
     }
     if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
@@ -65,7 +66,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.treatments,
-        systemPrompt: prompts.system.treatments(healthRecord),
+        systemPrompt: prompts.system.treatments(validatedRecord as Partial<HealthRecordType>),
       };
     }
     if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
@@ -73,7 +74,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.consultations,
-        systemPrompt: prompts.system.consultations(healthRecord),
+        systemPrompt: prompts.system.consultations(validatedRecord as Partial<HealthRecordType>),
       };
     }
 
@@ -97,7 +98,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.followUps(consultationOrder),
-        systemPrompt: prompts.system.followUps(healthRecord, consultationIndex),
+        systemPrompt: prompts.system.followUps(validatedRecord as Partial<HealthRecordType>, consultationIndex),
       };
     }
 

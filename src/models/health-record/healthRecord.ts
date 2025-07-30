@@ -65,11 +65,7 @@ const updateSchema = new Schema<HealthRecordUpdateType>(
       type: [symptomSchema],
       default: [],
     },
-    status: {
-      type: String,
-      enum: statusSchema,
-      default: "open",
-    },
+    status: statusSchema,
     treatmentsTried: {
       type: [String],
       default: [],
@@ -102,10 +98,7 @@ const recordSchema = new Schema<HealthRecordType>(
         message: "At least one symptom is required",
       },
     },
-    status: {
-      type: statusSchema,
-      required: true,
-    },
+    status: statusSchema,
     treatmentsTried: {
       type: [String],
       default: [],

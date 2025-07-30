@@ -98,9 +98,9 @@ export default {
         "description": "${currentRecord.description}",
         "symptoms": ${JSON.stringify(currentRecord.symptoms)},
         "treatmentsTried": ${JSON.stringify(currentRecord.treatmentsTried)},
-        "improvementStatus": "${currentRecord.improvementStatus}",
-        "severity": "${currentRecord.severity}",
-        "status": "${currentRecord.status}",
+        "progression": "${currentRecord.status?.progression}",
+        "severity": "${currentRecord.status?.severity}",
+        "stage": "${currentRecord.status?.stage}",
         "medicalConsultations": [
           ...${JSON.stringify(currentRecord.medicalConsultations)},
           {
@@ -162,9 +162,9 @@ export default {
         "description": "${currentRecord.description}",
         "symptoms": ${JSON.stringify(currentRecord.symptoms)},
         "treatmentsTried": ${JSON.stringify(currentRecord.treatmentsTried)},
-        "improvementStatus": "${currentRecord.improvementStatus}",
-        "severity": "${currentRecord.severity}",
-        "status": "${currentRecord.status}",
+        "progression": "${currentRecord.status?.progression}",
+        "severity": "${currentRecord.status?.severity}",
+        "stage": "${currentRecord.status?.stage}",
         "medicalConsultations": ${JSON.stringify(currentRecord.medicalConsultations)},
       }
     `,
