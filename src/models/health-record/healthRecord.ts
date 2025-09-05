@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { STAGE_TYPES, SEVERITY_TYPES, PROGRESSION_TYPES } from "./healthRecordService";
+import { PROGRESSION_TYPES, SEVERITY_TYPES, STAGE_TYPES } from "./healthRecordService";
 import { HealthRecordType, HealthRecordUpdateType } from "./healthRecordValidation";
 
 const { Schema } = mongoose;

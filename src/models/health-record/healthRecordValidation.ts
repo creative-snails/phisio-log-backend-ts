@@ -3,13 +3,13 @@ import {
   MAX_CHAR_LONG,
   MAX_CHAR_MEDIUM,
   MAX_CHAR_SHORT,
+  maxValidationMessage,
   MIN_CHAR_MEDIUM,
   MIN_CHAR_SHORT,
-  STAGE_TYPES,
-  SEVERITY_TYPES,
-  PROGRESSION_TYPES,
-  maxValidationMessage,
   minValidationMessage,
+  PROGRESSION_TYPES,
+  SEVERITY_TYPES,
+  STAGE_TYPES,
 } from "./healthRecordService";
 
 export const Z_Stage = z.enum(STAGE_TYPES);
