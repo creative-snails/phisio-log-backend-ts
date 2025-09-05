@@ -77,13 +77,7 @@ const Z_MedicalConsultation = z.object({
 export const Z_HealthRecordUpdate = z.object({
   description: Z_Description.optional(),
   symptoms: z.array(Z_Symptom).optional().default([]),
-  status: z
-    .object({
-      stage: Z_Stage.optional(),
-      severity: Z_Severity.optional(),
-      progression: Z_Progression.optional(),
-    })
-    .optional(),
+  status: Z_Status.optional(),
   treatmentsTried: z
     .array(
       z
@@ -111,11 +105,7 @@ export const Z_HealthRecord = z.object({
     .default("me"),
   description: Z_Description,
   symptoms: z.array(Z_Symptom).min(1, "At least one symptom is required"),
-  status: z.object({
-    stage: Z_Stage.optional(),
-    severity: Z_Severity.optional(),
-    progression: Z_Progression.optional(),
-  }),
+  status: Z_Status,
   treatmentsTried: z
     .array(
       z

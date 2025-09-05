@@ -15,21 +15,110 @@ export default {
       - Summarize and clean up all extracted data, correcting typos and inconsistent phrasing before adding it to the final JSON.
 
       Zod Schema
-      const IMPROVEMENT_STATUS = ["improving", "stable", "worsening", "variable"] as const;
-      const SEVERITY_TYPES = ["mild", "moderate", "severe", "variable"] as const;
+      const MAX_CHAR_SHORT = 100;
+      const MAX_CHAR_MEDIUM = 1000;
+      const MAX_CHAR_LONG = 10_000;
 
-      const Symptoms = z.object({
-        name: z.string().trim().min(1).max(MAX_CHAR_MEDIUM),
-        startDate: z.date().max(new Date()),
+      const MIN_CHAR_SHORT = 2;
+      const MIN_CHAR_MEDIUM = 10;
+      const MIN_CHAR_LONG = 50;
+
+      const STAGE_TYPES = ["open", "closed", "in-progress"] as const;
+      const SEVERITY_TYPES = ["mild", "moderate", "severe", "variable"] as const;
+      const PROGRESSION_TYPES = ["improving", "stable", "worsening", "variable"] as const;
+
+      const Stage = z.enum(STAGE_TYPES);
+      const Severity = z.enum(SEVERITY_TYPES);
+      const Progression = z.enum(PROGRESSION_TYPES);
+
+      const Status = z.object({
+        stage: Stage,
+        severity: Severity,
+        progression: Progression,
+      });
+
+      const Description = z
+        .string()
+        .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
+        .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG));
+
+      const Symptom = z.object({
+        name: z
+          .string()
+          .trim()
+          .min(MIN_CHAR_SHORT, minValidationMessage("Symptom", MIN_CHAR_SHORT))
+          .max(MAX_CHAR_MEDIUM, maxValidationMessage("Symptom", MAX_CHAR_MEDIUM)),
+        startDate: z.date().optional(),
+      });
+
+      const MedicalConsultation = z.object({
+        consultant: z
+          .string()
+          .trim()
+          .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
+          .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
+        date: z.date().max(new Date(), "Consultation date cannot be in the future"),
+        diagnosis: z
+          .string()
+          .trim()
+          .min(MIN_CHAR_SHORT, minValidationMessage("Diagnosis", MIN_CHAR_SHORT))
+          .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG)),
+        followUpActions: z
+          .array(
+            z
+              .string()
+              .trim()
+              .min(MIN_CHAR_SHORT, minValidationMessage("Follow-up actions", MIN_CHAR_SHORT))
+              .max(MAX_CHAR_MEDIUM, maxValidationMessage("Follow-up actions", MAX_CHAR_MEDIUM))
+          )
+          .optional()
+          .default([]),
+      });
+
+      const HealthRecordUpdate = z.object({
+        description: Description.optional(),
+        symptoms: z.array(Z_Symptom).optional().default([]),
+        status: Status.optional(),
+        treatmentsTried: z
+          .array(
+            z
+              .string()
+              .trim()
+              .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
+              .max(MAX_CHAR_LONG, maxValidationMessage("Treatments tried", MAX_CHAR_LONG))
+          )
+          .optional()
+          .default([]),
+        medicalConsultations: z
+          .array(MedicalConsultation)
+          .max(10, "You can only have up to 10 medical consultations.")
+          .optional()
+          .default([]),
       });
 
       const HealthRecord = z.object({
-        description: z.string().trim().min(2).max(MAX_CHAR_LONG),
-        symptoms: z.array(Symptoms).min(1),
+        description: Description,
+        symptoms: z.array(Symptom).min(1),
         status: z.enum(STATUS_TYPES).default("open"),
-        treatmentsTried: z.array(z.string().trim().min(2).max(MAX_CHAR_LONG)).default([]),
-        improvementStatus: z.enum(IMPROVEMENT_STATUS).default("stable"),
-        severity: z.enum(SEVERITY_TYPES).default("variable"),
+        status: Status,
+        treatmentsTried: z
+          .array(
+            z
+              .string()
+              .trim()
+              .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
+              .max(MAX_CHAR_SHORT, maxValidationMessage("Treatments tried", MAX_CHAR_SHORT))
+          )
+        .optional()
+        .default([]),
+        medicalConsultations: z
+          .array(MedicalConsultation)
+          .max(10, "You can only have up to 10 medical consultations.")
+          .optional()
+          .default([]),
+        updates: z.array(HealthRecordUpdate).optional().default([]),
+        createdAt: z.date().optional(),
+        updatedAt: z.date().optional(),
       });
 
       Expected JSON Output structure:
@@ -37,9 +126,11 @@ export default {
         "description": "",
         "symptoms": [{name: ""}],
         "treatmentsTried": [],
-        "improvementStatus": "",
-        "severity": "",
-        "status": ""
+        "status": {
+          "progression": "",
+          "severity": "",
+          "stage": "",
+        }
       }
     `,
     treatments: (currentRecord: Partial<HealthRecordType>) => `
@@ -98,9 +189,11 @@ export default {
         "description": "${currentRecord.description}",
         "symptoms": ${JSON.stringify(currentRecord.symptoms)},
         "treatmentsTried": ${JSON.stringify(currentRecord.treatmentsTried)},
-        "progression": "${currentRecord.status?.progression}",
-        "severity": "${currentRecord.status?.severity}",
-        "stage": "${currentRecord.status?.stage}",
+        "status": {
+          "progression": "${currentRecord.status?.progression}",
+          "severity": "${currentRecord.status?.severity}",
+          "stage": "${currentRecord.status?.stage}"
+        },
         "medicalConsultations": [
           ...${JSON.stringify(currentRecord.medicalConsultations)},
           {
