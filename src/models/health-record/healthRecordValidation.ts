@@ -84,7 +84,7 @@ export const Z_HealthRecordUpdate = z.object({
         .string()
         .trim()
         .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
-        .max(MAX_CHAR_LONG, maxValidationMessage("Treatments tried", MAX_CHAR_LONG))
+        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Treatments tried", MAX_CHAR_MEDIUM))
     )
     .optional()
     .default([]),
@@ -112,7 +112,7 @@ export const Z_HealthRecord = z.object({
         .string()
         .trim()
         .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
-        .max(MAX_CHAR_SHORT, maxValidationMessage("Treatments tried", MAX_CHAR_SHORT))
+        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Treatments tried", MAX_CHAR_MEDIUM))
     )
     .optional()
     .default([]),
