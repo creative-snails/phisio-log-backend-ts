@@ -75,7 +75,11 @@ const Z_MedicalConsultation = z.object({
 });
 
 export const Z_HealthRecordUpdate = z.object({
-  description: Z_Description.optional(),
+  description: z
+    .string()
+    .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
+    .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG))
+    .optional(),
   symptoms: z.array(Z_Symptom).optional().default([]),
   status: Z_Status.optional(),
   treatmentsTried: z
@@ -103,7 +107,10 @@ export const Z_HealthRecord = z.object({
     .max(MAX_CHAR_SHORT, maxValidationMessage("User", MAX_CHAR_SHORT))
     .optional()
     .default("me"),
-  description: Z_Description,
+  description: z
+    .string()
+    .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
+    .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG)),
   symptoms: z.array(Z_Symptom).min(1, "At least one symptom is required"),
   status: Z_Status,
   treatmentsTried: z

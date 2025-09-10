@@ -37,11 +37,6 @@ export default {
         progression: Progression,
       });
 
-      const Description = z
-        .string()
-        .min(MIN_CHAR_MEDIUM, "Description must be at least 10 characters long")
-        .max(MAX_CHAR_LONG, "Description must be less than 10,000 characters");
-
       const Symptom = z.object({
         name: z
           .string()
@@ -52,7 +47,10 @@ export default {
       });
 
       const HealthRecord = z.object({
-        description: Description,
+        description: z
+          .string()
+          .min(MIN_CHAR_MEDIUM, "Description must be at least 10 characters long")
+          .max(MAX_CHAR_LONG, "Description must be less than 10,000 characters"),
         symptoms: z.array(Symptom).min(1),
         status: Status,
         treatmentsTried: z
@@ -213,11 +211,6 @@ export default {
         progression: Progression,
       });
 
-      const Description = z
-        .string()
-        .min(MIN_CHAR_MEDIUM, "Description must be at least 10 characters long")
-        .max(MAX_CHAR_LONG, "Description must be less than 10,000 characters");
-
       const Symptom = z.object({
         name: z
           .string()
@@ -228,7 +221,10 @@ export default {
       });
 
       const HealthRecord = z.object({
-        description: Description,
+        description: z
+          .string()
+          .min(MIN_CHAR_MEDIUM, "Description must be at least 10 characters long")
+          .max(MAX_CHAR_LONG, "Description must be less than 10,000 characters"),
         symptoms: z.array(Symptom).min(1),
         status: Status,
         treatmentsTried: z
