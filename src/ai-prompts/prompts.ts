@@ -39,8 +39,8 @@ export default {
 
       const Description = z
         .string()
-        .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
-        .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG));
+        .min(MIN_CHAR_MEDIUM, "Description must be at least 10 characters long")
+        .max(MAX_CHAR_LONG, "Description must be less than 10,000 characters");
 
       const Symptom = z.object({
         name: z
@@ -215,8 +215,8 @@ export default {
 
       const Description = z
         .string()
-        .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
-        .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG));
+        .min(MIN_CHAR_MEDIUM, "Description must be at least 10 characters long")
+        .max(MAX_CHAR_LONG, "Description must be less than 10,000 characters");
 
       const Symptom = z.object({
         name: z
