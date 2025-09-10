@@ -46,8 +46,8 @@ export default {
         name: z
           .string()
           .trim()
-          .min(MIN_CHAR_SHORT, minValidationMessage("Symptom", MIN_CHAR_SHORT))
-          .max(MAX_CHAR_MEDIUM, maxValidationMessage("Symptom", MAX_CHAR_MEDIUM)),
+          .min(MIN_CHAR_SHORT, "Symptom must be at least 2 characters long")
+          .max(MAX_CHAR_MEDIUM, "Symptom must be less than 1000 characters"),
         startDate: z.date().optional(),
       });
 
@@ -60,8 +60,8 @@ export default {
             z
               .string()
               .trim()
-              .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
-              .max(MAX_CHAR_SHORT, maxValidationMessage("Treatments tried", MAX_CHAR_SHORT))
+              .min(MIN_CHAR_SHORT, "Treatments tried must be at least 2 characters long")
+              .max(MAX_CHAR_SHORT, "Treatments tried must be less than 100 characters")
           )
         .optional()
         .default([]),
@@ -127,21 +127,21 @@ export default {
         consultant: z
           .string()
           .trim()
-          .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
-          .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
+          .min(MIN_CHAR_SHORT, "Consultant name must be at least 2 characters long")
+          .max(MAX_CHAR_SHORT, "Consultant name must be less than 100 characters"),
         date: z.date().max(new Date(), "Consultation date cannot be in the future"),
         diagnosis: z
           .string()
           .trim()
-          .min(MIN_CHAR_SHORT, minValidationMessage("Diagnosis", MIN_CHAR_SHORT))
-          .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG)),
+          .min(MIN_CHAR_SHORT, "Diagnosis must be at least 2 characters long")
+          .max(MAX_CHAR_LONG, "Diagnosis must be less than 10000 characters"),
         followUpActions: z
           .array(
             z
               .string()
               .trim()
-              .min(MIN_CHAR_SHORT, minValidationMessage("Follow-up actions", MIN_CHAR_SHORT))
-              .max(MAX_CHAR_MEDIUM, maxValidationMessage("Follow-up actions", MAX_CHAR_MEDIUM))
+              .min(MIN_CHAR_SHORT, "Follow up actions must be at least 2 characters long")
+              .max(MAX_CHAR_MEDIUM, "Follow up actions must be less than 1000 characters")
           )
           .optional()
           .default([]),
@@ -222,8 +222,8 @@ export default {
         name: z
           .string()
           .trim()
-          .min(MIN_CHAR_SHORT, minValidationMessage("Symptom", MIN_CHAR_SHORT))
-          .max(MAX_CHAR_MEDIUM, maxValidationMessage("Symptom", MAX_CHAR_MEDIUM)),
+          .min(MIN_CHAR_SHORT, "Symptom must be at least 2 characters long")
+          .max(MAX_CHAR_MEDIUM, "Symptom must be less than 1000 characters"),
         startDate: z.date().optional(),
       });
 
@@ -236,8 +236,8 @@ export default {
             z
               .string()
               .trim()
-              .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
-              .max(MAX_CHAR_SHORT, maxValidationMessage("Treatments tried", MAX_CHAR_SHORT))
+              .min(MIN_CHAR_SHORT, "Treatment tried must be at least 2 characters long")
+              .max(MAX_CHAR_SHORT, "Treatment tried must be less than 100 characters")
           )
         .optional()
         .default([]),
@@ -247,21 +247,21 @@ export default {
         consultant: z
           .string()
           .trim()
-          .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
-          .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
+          .min(MIN_CHAR_SHORT, "Consultant name must be at least 2 characters long")
+          .max(MAX_CHAR_SHORT, "Consultant name must be less than 100 characters"),
         date: z.date().max(new Date(), "Consultation date cannot be in the future"),
         diagnosis: z
           .string()
           .trim()
-          .min(MIN_CHAR_SHORT, minValidationMessage("Diagnosis", MIN_CHAR_SHORT))
-          .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG)),
+          .min(MIN_CHAR_SHORT, "Diagnosis must be at least 2 characters long")
+          .max(MAX_CHAR_LONG, "Diagnosis must be less than 10000 characters"),
         followUpActions: z
           .array(
             z
               .string()
               .trim()
-              .min(MIN_CHAR_SHORT, minValidationMessage("Follow-up actions", MIN_CHAR_SHORT))
-              .max(MAX_CHAR_MEDIUM, maxValidationMessage("Follow-up actions", MAX_CHAR_MEDIUM))
+              .min(MIN_CHAR_SHORT, "Follow up actions must be at least 2 characters long")
+              .max(MAX_CHAR_MEDIUM, "Follow up actions must be less than 1000 characters")
           )
           .optional()
           .default([]),
