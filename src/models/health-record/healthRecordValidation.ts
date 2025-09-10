@@ -129,8 +129,6 @@ export const Z_HealthRecord = z.object({
     .optional()
     .default([]),
   updates: z.array(Z_HealthRecordUpdate).optional().default([]),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
 });
 
 export type HealthRecordUpdateType = z.infer<typeof Z_HealthRecordUpdate>;
