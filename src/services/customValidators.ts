@@ -39,6 +39,14 @@ export async function validateHealthRecord(
     }));
   }
 
+  if ("createdAt" in healthRecord && healthRecord.createdAt) {
+    healthRecord.createdAt = new Date(healthRecord.createdAt);
+  }
+
+  if ("updatedAt" in healthRecord && healthRecord.updatedAt) {
+    healthRecord.updatedAt = new Date(healthRecord.updatedAt);
+  }
+
   const { additionalSymptoms, treatmentsTried, medicalConsultations, followUps } = conversation.requestedData;
 
   try {
