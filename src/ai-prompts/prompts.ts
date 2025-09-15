@@ -6,9 +6,8 @@ export default {
     init: `
       Based on the user description, generate a JSON object that accurately matches the Zod schema.
       - For "description": summarize, clean up, and correct mistakes before adding it to the JSON. Do not include any placeholder text, meaningless phrases or unrelated information in the description.
-      - For fields "stage", "severity", and "progression", interpret the description and select a value from their respective accepted options. These fields have default values and are not required, so if the information is not clearly present, use the default values which are provided on the next line.
-      - For "status.stage", "status.severity", and "status.progression" interpret the description and select a value from their respective accepted options, or if value for any of the fields can not be inferred, use defaults: "status.stage" = "open", "status.severity" = "variable", "status.progression" = "variable"
-      - For "symptoms": extract all symptoms that are clearly stated. Do not create symptoms based on context, implied meaning, or logical assumptions. If multiple unrelated symptoms are mentioned, create separate entries rather than grouping them. If no symptoms are mentioned, leave the array empty.
+      - For all "status" fields ("stage", "severity", "progression"), interpret from the description if possible. If no value is clear, use defaults: "stage" = "open", "severity" = "variable", "progression" = "variable".
+      - For "symptoms": extract all symptoms that are clearly stated. Do not create symptoms based on context, implied meaning, or logical assumptions. If multiple unrelated symptoms are mentioned, create separate entries rather than grouping them.
       - Extract only clear, medically relevant details from the user's input. Disregard any vague, unrelated, non-medical, or ambiguous information.
       - If any required fields are missing and have no default in the Zod schema, leave those fields empty.
       - Be aware that today's date is ${new Date()}. Ensure no future dates are assigned to any date field.
