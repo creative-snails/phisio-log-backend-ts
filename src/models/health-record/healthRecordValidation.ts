@@ -50,29 +50,57 @@ const Z_Symptom = z.object({
   // startDate: z.date().max(new Date(), "Start date cannot be in the future").optional(),
 });
 
-const Z_MedicalConsultation = z.object({
-  consultant: z
-    .string()
-    .trim()
-    .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
-    .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
-  date: z.date().max(new Date(), "Consultation date cannot be in the future").optional(),
-  diagnosis: z
-    .string()
-    .trim()
-    .min(MIN_CHAR_SHORT, minValidationMessage("Diagnosis", MIN_CHAR_SHORT))
-    .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG)),
-  followUpActions: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(MIN_CHAR_SHORT, minValidationMessage("Follow-up actions", MIN_CHAR_SHORT))
-        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Follow-up actions", MAX_CHAR_MEDIUM))
-    )
-    .optional()
-    .default([]),
-});
+const Z_MedicalConsultation = z
+  .object({
+    consultant: z
+      .string()
+      .trim()
+      .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
+      .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
+    date: z.date().optional(),
+    diagnosis: z
+      .string()
+      .trim()
+      .min(MIN_CHAR_SHORT, minValidationMessage("Diagnosis", MIN_CHAR_SHORT))
+      .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG))
+      .optional(),
+    followUpActions: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(MIN_CHAR_SHORT, minValidationMessage("Follow-up actions", MIN_CHAR_SHORT))
+          .max(MAX_CHAR_MEDIUM, maxValidationMessage("Follow-up actions", MAX_CHAR_MEDIUM))
+      )
+      .optional()
+      .default([]),
+  })
+  .superRefine((val, ctx) => {
+    const now = new Date();
+    const isFuture = val.date instanceof Date && val.date.getTime() > now.getTime();
+
+    if (isFuture) {
+      // Planned consultation: must not include diagnosis or follow-ups
+      if (val.diagnosis && val.diagnosis.trim() !== "") {
+        ctx.addIssue({
+          path: ["diagnosis"],
+          code: z.ZodIssueCode.custom,
+          message: "Planned consultations must not include a diagnosis.",
+        });
+      }
+    } else {
+      // Past or no date: must include diagnosis or at least one follow-up action
+      const hasDiagnosis = Boolean(val.diagnosis && val.diagnosis.trim() !== "");
+      const hasFollowUps = Array.isArray(val.followUpActions) && val.followUpActions.length > 0;
+      if (!hasDiagnosis && !hasFollowUps) {
+        ctx.addIssue({
+          path: ["diagnosis"],
+          code: z.ZodIssueCode.custom,
+          message: "Past consultations must include a diagnosis or follow-up actions.",
+        });
+      }
+    }
+  });
 
 export const Z_HealthRecordUpdate = z.object({
   description: z

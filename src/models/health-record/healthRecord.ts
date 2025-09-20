@@ -43,7 +43,6 @@ const medicalConsultationSchema = new Schema({
   date: Date,
   diagnosis: {
     type: String,
-    required: true,
     trim: true,
   },
   followUpActions: {

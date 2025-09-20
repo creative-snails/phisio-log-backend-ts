@@ -34,10 +34,25 @@ export async function validateHealthRecord(
   }
 
   if (healthRecord.medicalConsultations?.length) {
-    healthRecord.medicalConsultations = healthRecord.medicalConsultations.map((consultation) => ({
-      ...consultation,
-      date: consultation.date ? new Date(consultation.date) : undefined,
-    }));
+    const now = new Date();
+    healthRecord.medicalConsultations = healthRecord.medicalConsultations
+      .map((consultation) => {
+        const parsedDate = (consultation as { date?: string | number | Date }).date
+          ? new Date((consultation as { date: string | number | Date }).date)
+          : undefined;
+        const isFuture = parsedDate instanceof Date && parsedDate.getTime() > now.getTime();
+        if (isFuture) {
+          // Planned consultation: keep consultant and date; drop diagnosis but preserve follow-ups if present
+          return {
+            ...consultation,
+            date: parsedDate,
+            diagnosis: undefined,
+          } as typeof consultation;
+        }
+        return { ...consultation, date: parsedDate };
+      })
+      // Drop entries with no consultant at all
+      .filter((c) => Boolean((c as { consultant?: string }).consultant?.trim()));
   }
 
   const { additionalSymptoms, treatmentsTried, medicalConsultations, followUps } = conversation.requestedData;

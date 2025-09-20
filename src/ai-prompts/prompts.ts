@@ -16,7 +16,7 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
       Extraction rules:
@@ -32,7 +32,12 @@ export default {
         • severity: one of ["mild", "moderate", "severe", "variable"]
         • progression: one of ["improving", "stable", "worsening", "variable"]
         Always include the status object. If no value is clearly implied, use defaults: stage="open", severity="variable", progression="variable".
-      - Treatments/consultations: include only if explicitly mentioned; otherwise omit or use empty arrays.
+      - Treatments/consultations:
+        • Treatments: include only if the user already did them (exclude plans or recommendations). Look for verbs like "took", "used", "tried", "applied", "did". When identified, add them to treatmentsTried (dedupe case-insensitively); the description should remain a concise summary and not be the only place this information appears.
+        • Consultations:
+          - Past consultations (already happened): include with diagnosis; add any recommended or planned actions (e.g., MRI) to followUpActions.
+          - Future appointments (booked/planned): include consultant and date; omit diagnosis; add any recommended/planned actions (e.g., MRI next week) to followUpActions.
+          - Recommendations without a booked appointment (e.g., "doctor recommended an MRI next week") are not consultations on their own; however, if a future appointment is also implied/created, include the recommendation in that appointment’s followUpActions.
       - Multiple user messages: merge medically relevant facts across all user messages; the latest user message overrides earlier contradictions.
       - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
     `,
@@ -45,7 +50,7 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried": string[],
-  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
       Rules:
@@ -69,7 +74,7 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
       Rules:
@@ -102,17 +107,20 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-  "medicalConsultations": Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations": Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
       Rules:
   - Start from the given currentRecord (do not alter existing fields or entries unless the user clearly corrects them).
-      - Extract consultations only if explicitly stated. If multiple are mentioned, add one entry per consultation.
+  - Consultations:
+    • Past consultations (already happened): include with diagnosis; also include any recommended/planned actions (tests like MRI, medications, appointments) as followUpActions.
+    • Future appointments (booked/planned): include consultant and date; omit diagnosis; include recommended/planned actions (e.g., MRI next week) as followUpActions.
+    • Recommendations without a booked appointment are not consultations by themselves; if a future appointment is also implied, attach the recommendation as followUpActions.
       - Fields:
         • consultant: include name and role if provided (e.g., "Dr. Smith, cardiologist").
   • date: use ISO YYYY-MM-DD; convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC); never future dates; omit if unclear.
-        • diagnosis: include only the diagnosis, not advice.
-        • followUpActions: list recommended actions (treatments, appointments, care). If none, use an empty array.
+  • diagnosis: include only for past consultations; omit for future appointments.
+  • followUpActions: list recommended or planned actions (tests like MRI, medications, appointments, care). This can apply to both past consultations and future appointments. If none, use an empty array.
       - Do not infer or fabricate information. Omit fields that are not clearly provided.
       - Status enums must remain one of: stage ["open","closed","in-progress"], severity ["mild","moderate","severe","variable"], progression ["improving","stable","worsening","variable"]. If unclear, keep existing values.
 
@@ -141,21 +149,24 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>,
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>,
         "updates"?: Array<any>
       }
 
       Merge rules:
       - Start from currentRecord. Only change a field if the user clearly updated or contradicted it; otherwise keep existing values.
-      - Description: produce a concise, cleaned summary combining prior content with any new medically relevant details.
+  - Description: produce a concise, cleaned summary combining prior content with any new medically relevant details.
       - Symptoms: append clearly stated new symptoms. Do not remove existing symptoms unless the user explicitly retracts them. Omit startDate if unclear.
       - Status (enums, exact strings):
         • stage in ["open","closed","in-progress"],
         • severity in ["mild","moderate","severe","variable"],
         • progression in ["improving","stable","worsening","variable"].
         If no change is clearly implied, keep currentRecord values; if absent and unclear, use defaults stage="open", severity="variable", progression="variable".
-      - Treatments: append clearly mentioned items; deduplicate by case-insensitive string match.
-      - Consultations: append new consultations only when explicitly provided; preserve existing entries and their followUpActions unless the user clearly updates them.
+        Map phrases like "getting worse/worsening" to progression="worsening". Do not change severity unless explicitly stated.
+  - Treatments: append clearly mentioned items the user already did (verbs: took/used/tried/applied/did); deduplicate by case-insensitive string match. Exclude plans (e.g., "I will try").
+      - Consultations: append new consultations when explicitly provided:
+        • Past consultations (already happened): include diagnosis; add recommended/planned actions to followUpActions; preserve existing entries unless the user clearly updates them.
+        • Future appointments (booked/planned): include consultant and date; omit diagnosis; include recommended/planned actions (e.g., MRI) in followUpActions. Do not create consultations from recommendations alone if no appointment is implied.
   - Dates: use ISO YYYY-MM-DD. Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC). Never set future dates. Omit date fields if not clearly provided.
       - Multiple user messages: merge facts; the latest message overrides earlier contradictions.
       - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
