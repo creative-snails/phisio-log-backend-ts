@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import prompts from "../ai-prompts/prompts";
+import { MIN_CHAR_MEDIUM } from "../models/health-record/healthRecordService";
 import {
   HealthRecordType,
   HealthRecordUpdateType,
@@ -104,18 +105,32 @@ export async function validateHealthRecord(
         message: err.message,
       }));
 
-      const missingFields = validationErrors.filter((err) => err.message.includes("Required")).map((err) => err.field);
+      const missingFieldsRaw = validationErrors
+        .filter((err) => err.message.includes("Required"))
+        .map((err) => err.field)
+        // Do not surface 'status' to users because defaults are applied in prompts and schema usage
+        .filter((field) => field !== "status");
+
       const invalidFields = validationErrors
         .filter((err) => !err.message.includes("Required"))
         .map((err) => `${err.field} (${err.message})`);
 
+      // Helpful hints for commonly-missed fields
+      const hintForMissing = (field: string) => {
+        if (field === "description") return `description (min ${MIN_CHAR_MEDIUM} characters)`;
+        if (field === "symptoms") return "symptoms (at least 1 item)";
+        return field;
+      };
+
+      const missingFields = missingFieldsRaw.map(hintForMissing);
+
       if (missingFields.length) {
-        validationPrompt += "\nMissing required fields:\n";
+        validationPrompt += "\nMissing:\n";
         missingFields.forEach((field) => (validationPrompt += `- ${field}\n`));
       }
 
       if (invalidFields.length) {
-        validationPrompt += "\nFields with invalid data:\n";
+        validationPrompt += "\nInvalid:\n";
         invalidFields.forEach((field) => (validationPrompt += `- ${field}\n`));
       }
 
