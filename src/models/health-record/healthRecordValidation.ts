@@ -1,78 +1,130 @@
 import { z } from "zod";
 import {
-  IMPROVEMENT_STATUS,
   MAX_CHAR_LONG,
   MAX_CHAR_MEDIUM,
   MAX_CHAR_SHORT,
   maxValidationMessage,
+  MIN_CHAR_MEDIUM,
+  MIN_CHAR_SHORT,
   minValidationMessage,
+  PROGRESSION_TYPES,
   SEVERITY_TYPES,
-  STATUS_TYPES,
+  STAGE_TYPES,
 } from "./healthRecordService";
 
-const Z_Symptoms = z.object({
+export const Z_Stage = z.enum(STAGE_TYPES);
+export const Z_Severity = z.enum(SEVERITY_TYPES);
+export const Z_Progression = z.enum(PROGRESSION_TYPES);
+
+const Z_LabeledEnumOption = <T extends z.ZodTypeAny>(enumSchema: T) =>
+  z.object({
+    label: z.string(),
+    value: enumSchema,
+  });
+
+export const Z_StatusOptions = z.object({
+  stage: z.array(Z_LabeledEnumOption(Z_Stage)),
+  severity: z.array(Z_LabeledEnumOption(Z_Severity)),
+  progression: z.array(Z_LabeledEnumOption(Z_Progression)),
+});
+
+export const Z_Status = z.object({
+  stage: Z_Stage,
+  severity: Z_Severity,
+  progression: Z_Progression,
+});
+
+export const Z_Description = z
+  .string()
+  .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
+  .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG));
+
+const Z_Symptom = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Symptom name is required")
+    .min(MIN_CHAR_SHORT, minValidationMessage("Symptom", MIN_CHAR_SHORT))
     .max(MAX_CHAR_MEDIUM, maxValidationMessage("Symptom", MAX_CHAR_MEDIUM)),
   startDate: z.date().optional(),
   // TODO: This is causing some strange behaviour, will address it in the future
   // startDate: z.date().max(new Date(), "Start date cannot be in the future").optional(),
 });
 
-const Z_MedicalConsultation = z.object({
-  consultant: z
-    .string()
-    .trim()
-    .min(2, minValidationMessage("Consultant", 2))
-    .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
-  date: z.date().max(new Date(), "Consultation date cannot be in the future"),
-  diagnosis: z
-    .string()
-    .trim()
-    .min(1, "Diagnosis is required")
-    .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG)),
-  followUpActions: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(2, minValidationMessage("Follow-up actions", 2))
-        .max(MAX_CHAR_LONG, maxValidationMessage("Follow-up actions", MAX_CHAR_LONG))
-    )
-    .optional()
-    .default([]),
-});
+const Z_MedicalConsultation = z
+  .object({
+    consultant: z
+      .string()
+      .trim()
+      .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
+      .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
+    date: z.date().optional(),
+    diagnosis: z
+      .string()
+      .trim()
+      .min(MIN_CHAR_SHORT, minValidationMessage("Diagnosis", MIN_CHAR_SHORT))
+      .max(MAX_CHAR_LONG, maxValidationMessage("Diagnosis", MAX_CHAR_LONG))
+      .optional(),
+    followUpActions: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(MIN_CHAR_SHORT, minValidationMessage("Follow-up actions", MIN_CHAR_SHORT))
+          .max(MAX_CHAR_MEDIUM, maxValidationMessage("Follow-up actions", MAX_CHAR_MEDIUM))
+      )
+      .optional()
+      .default([]),
+  })
+  .superRefine((val, ctx) => {
+    const now = new Date();
+    const isFuture = val.date instanceof Date && val.date.getTime() > now.getTime();
+
+    if (isFuture) {
+      // Planned consultation: must not include diagnosis or follow-ups
+      if (val.diagnosis && val.diagnosis.trim() !== "") {
+        ctx.addIssue({
+          path: ["diagnosis"],
+          code: z.ZodIssueCode.custom,
+          message: "Planned consultations must not include a diagnosis.",
+        });
+      }
+    } else {
+      // Past or no date: must include diagnosis or at least one follow-up action
+      const hasDiagnosis = Boolean(val.diagnosis && val.diagnosis.trim() !== "");
+      const hasFollowUps = Array.isArray(val.followUpActions) && val.followUpActions.length > 0;
+      if (!hasDiagnosis && !hasFollowUps) {
+        ctx.addIssue({
+          path: ["diagnosis"],
+          code: z.ZodIssueCode.custom,
+          message: "Past consultations must include a diagnosis or follow-up actions.",
+        });
+      }
+    }
+  });
 
 export const Z_HealthRecordUpdate = z.object({
   description: z
     .string()
-    .trim()
-    .min(2, minValidationMessage("Description", 2))
+    .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
     .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG))
     .optional(),
-  symptoms: z.array(Z_Symptoms).optional().default([]),
-  status: z.enum(STATUS_TYPES).optional().default("open"),
+  symptoms: z.array(Z_Symptom).optional().default([]),
+  status: Z_Status.optional(),
   treatmentsTried: z
     .array(
       z
         .string()
         .trim()
-        .min(2, minValidationMessage("Treatments tried", 2))
-        .max(MAX_CHAR_LONG, maxValidationMessage("Treatments tried", MAX_CHAR_LONG))
+        .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
+        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Treatments tried", MAX_CHAR_MEDIUM))
     )
     .optional()
     .default([]),
-  improvementStatus: z.enum(IMPROVEMENT_STATUS).optional().default("stable"),
   medicalConsultations: z
     .array(Z_MedicalConsultation)
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
-  severity: z.enum(SEVERITY_TYPES).optional().default("variable"),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
 });
 
 export const Z_HealthRecord = z.object({
@@ -85,31 +137,26 @@ export const Z_HealthRecord = z.object({
     .default("me"),
   description: z
     .string()
-    .trim()
-    .min(2, minValidationMessage("Description", 2))
+    .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
     .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG)),
-  symptoms: z.array(Z_Symptoms).min(1, "At least one symptom is required"),
-  status: z.enum(STATUS_TYPES).optional().default("open"),
+  symptoms: z.array(Z_Symptom).min(1, "At least one symptom is required"),
+  status: Z_Status,
   treatmentsTried: z
     .array(
       z
         .string()
         .trim()
-        .min(2, minValidationMessage("Treatments tried", 2))
-        .max(MAX_CHAR_LONG, maxValidationMessage("Treatments tried", MAX_CHAR_LONG))
+        .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
+        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Treatments tried", MAX_CHAR_MEDIUM))
     )
     .optional()
     .default([]),
-  improvementStatus: z.enum(IMPROVEMENT_STATUS).optional().default("stable"),
   medicalConsultations: z
     .array(Z_MedicalConsultation)
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
-  severity: z.enum(SEVERITY_TYPES).optional().default("variable"),
   updates: z.array(Z_HealthRecordUpdate).optional().default([]),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
 });
 
 export type HealthRecordUpdateType = z.infer<typeof Z_HealthRecordUpdate>;

@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import prompts from "../ai-prompts/prompts";
+import { MIN_CHAR_MEDIUM } from "../models/health-record/healthRecordService";
 import {
   HealthRecordType,
   HealthRecordUpdateType,
@@ -20,30 +21,42 @@ interface ValidationHelathRecordReturn {
 const MINIMUM_SYMPTOMS = 2;
 
 export async function validateHealthRecord(
-  healthRecord: Partial<HealthRecordType | HealthRecordUpdateType>,
+  healthRecord: Partial<HealthRecordType> | Partial<HealthRecordUpdateType>,
   conversation: Conversation,
   isUpdate?: boolean
 ): Promise<ValidationHelathRecordReturn> {
+  // Never allow 'updates' to be set via the main create/update flows
+  if (!isUpdate && (healthRecord as { updates?: unknown }).updates) {
+    delete (healthRecord as { updates?: unknown }).updates;
+  }
   // Convert dates to valid dates before handing over to validation
   if (healthRecord.symptoms?.length) {
     healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
       ...symptom,
-      startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
+      startDate: symptom.startDate ? new Date(symptom.startDate) : undefined,
     }));
   }
 
   if (healthRecord.medicalConsultations?.length) {
-    healthRecord.medicalConsultations = healthRecord.medicalConsultations.map((consultation) => ({
-      ...consultation,
-      date: consultation.date ? new Date(consultation.date) : new Date(),
-    }));
-  }
-
-  if (healthRecord?.createdAt) {
-    healthRecord.createdAt = healthRecord.createdAt ? new Date(healthRecord.createdAt) : new Date();
-  }
-  if (healthRecord?.updatedAt) {
-    healthRecord.updatedAt = healthRecord.updatedAt ? new Date(healthRecord.updatedAt) : new Date();
+    const now = new Date();
+    healthRecord.medicalConsultations = healthRecord.medicalConsultations
+      .map((consultation) => {
+        const parsedDate = (consultation as { date?: string | number | Date }).date
+          ? new Date((consultation as { date: string | number | Date }).date)
+          : undefined;
+        const isFuture = parsedDate instanceof Date && parsedDate.getTime() > now.getTime();
+        if (isFuture) {
+          // Planned consultation: keep consultant and date; drop diagnosis but preserve follow-ups if present
+          return {
+            ...consultation,
+            date: parsedDate,
+            diagnosis: undefined,
+          } as typeof consultation;
+        }
+        return { ...consultation, date: parsedDate };
+      })
+      // Drop entries with no consultant at all
+      .filter((c) => Boolean((c as { consultant?: string }).consultant?.trim()));
   }
 
   const { additionalSymptoms, treatmentsTried, medicalConsultations, followUps } = conversation.requestedData;
@@ -57,7 +70,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.symptoms,
-        systemPrompt: prompts.system.symptoms(healthRecord),
+        systemPrompt: prompts.system.symptoms(validatedRecord as Partial<HealthRecordType>),
       };
     }
     if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
@@ -65,7 +78,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.treatments,
-        systemPrompt: prompts.system.treatments(healthRecord),
+        systemPrompt: prompts.system.treatments(validatedRecord as Partial<HealthRecordType>),
       };
     }
     if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
@@ -73,7 +86,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.consultations,
-        systemPrompt: prompts.system.consultations(healthRecord),
+        systemPrompt: prompts.system.consultations(validatedRecord as Partial<HealthRecordType>),
       };
     }
 
@@ -97,7 +110,7 @@ export async function validateHealthRecord(
       return {
         success: true,
         assistantPrompt: prompts.assistant.followUps(consultationOrder),
-        systemPrompt: prompts.system.followUps(healthRecord, consultationIndex),
+        systemPrompt: prompts.system.followUps(validatedRecord as Partial<HealthRecordType>, consultationIndex),
       };
     }
 
@@ -111,18 +124,32 @@ export async function validateHealthRecord(
         message: err.message,
       }));
 
-      const missingFields = validationErrors.filter((err) => err.message.includes("Required")).map((err) => err.field);
+      const missingFieldsRaw = validationErrors
+        .filter((err) => err.message.includes("Required"))
+        .map((err) => err.field)
+        // Do not surface 'status' to users because defaults are applied in prompts and schema usage
+        .filter((field) => field !== "status");
+
       const invalidFields = validationErrors
         .filter((err) => !err.message.includes("Required"))
         .map((err) => `${err.field} (${err.message})`);
 
+      // Helpful hints for commonly-missed fields
+      const hintForMissing = (field: string) => {
+        if (field === "description") return `description (min ${MIN_CHAR_MEDIUM} characters)`;
+        if (field === "symptoms") return "symptoms (at least 1 item)";
+        return field;
+      };
+
+      const missingFields = missingFieldsRaw.map(hintForMissing);
+
       if (missingFields.length) {
-        validationPrompt += "\nMissing required fields:\n";
+        validationPrompt += "\nMissing:\n";
         missingFields.forEach((field) => (validationPrompt += `- ${field}\n`));
       }
 
       if (invalidFields.length) {
-        validationPrompt += "\nFields with invalid data:\n";
+        validationPrompt += "\nInvalid:\n";
         invalidFields.forEach((field) => (validationPrompt += `- ${field}\n`));
       }
 

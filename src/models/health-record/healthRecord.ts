@@ -1,8 +1,29 @@
 import mongoose from "mongoose";
-import { IMPROVEMENT_STATUS, SEVERITY_TYPES, STATUS_TYPES } from "./healthRecordService";
+import { PROGRESSION_TYPES, SEVERITY_TYPES, STAGE_TYPES } from "./healthRecordService";
 import { HealthRecordType, HealthRecordUpdateType } from "./healthRecordValidation";
 
 const { Schema } = mongoose;
+
+const statusSchema = new Schema(
+  {
+    stage: {
+      type: String,
+      enum: STAGE_TYPES,
+      required: true,
+    },
+    severity: {
+      type: String,
+      enum: SEVERITY_TYPES,
+      required: true,
+    },
+    progression: {
+      type: String,
+      enum: PROGRESSION_TYPES,
+      required: true,
+    },
+  },
+  { _id: false }
+);
 
 const symptomSchema = new Schema({
   name: {
@@ -19,13 +40,9 @@ const medicalConsultationSchema = new Schema({
     required: true,
     trim: true,
   },
-  date: {
-    type: Date,
-    required: true,
-  },
+  date: Date,
   diagnosis: {
     type: String,
-    required: true,
     trim: true,
   },
   followUpActions: {
@@ -44,28 +61,14 @@ const updateSchema = new Schema<HealthRecordUpdateType>(
       type: [symptomSchema],
       default: [],
     },
-    status: {
-      type: String,
-      enum: STATUS_TYPES,
-      default: "open",
-    },
+    status: statusSchema,
     treatmentsTried: {
       type: [String],
       default: [],
     },
-    improvementStatus: {
-      type: String,
-      enum: IMPROVEMENT_STATUS,
-      default: "stable",
-    },
     medicalConsultations: {
       type: [medicalConsultationSchema],
       default: [],
-    },
-    severity: {
-      type: String,
-      enum: SEVERITY_TYPES,
-      default: "variable",
     },
   },
   { timestamps: true }
@@ -76,7 +79,7 @@ const recordSchema = new Schema<HealthRecordType>(
     user: {
       type: String,
       default: "me",
-      // required: true,
+      //required: true,
     },
     description: {
       type: String,
@@ -91,28 +94,14 @@ const recordSchema = new Schema<HealthRecordType>(
         message: "At least one symptom is required",
       },
     },
-    status: {
-      type: String,
-      enum: STATUS_TYPES,
-      default: "open",
-    },
+    status: statusSchema,
     treatmentsTried: {
       type: [String],
       default: [],
     },
-    improvementStatus: {
-      type: String,
-      enum: IMPROVEMENT_STATUS,
-      default: "stable",
-    },
     medicalConsultations: {
       type: [medicalConsultationSchema],
       default: [],
-    },
-    severity: {
-      type: String,
-      enum: SEVERITY_TYPES,
-      default: "variable",
     },
     updates: {
       type: [updateSchema],
