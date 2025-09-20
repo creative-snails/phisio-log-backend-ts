@@ -29,14 +29,14 @@ export async function validateHealthRecord(
   if (healthRecord.symptoms?.length) {
     healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
       ...symptom,
-      startDate: symptom.startDate ? new Date(symptom.startDate) : new Date(),
+      startDate: symptom.startDate ? new Date(symptom.startDate) : undefined,
     }));
   }
 
   if (healthRecord.medicalConsultations?.length) {
     healthRecord.medicalConsultations = healthRecord.medicalConsultations.map((consultation) => ({
       ...consultation,
-      date: consultation.date ? new Date(consultation.date) : new Date(),
+      date: consultation.date ? new Date(consultation.date) : undefined,
     }));
   }
 

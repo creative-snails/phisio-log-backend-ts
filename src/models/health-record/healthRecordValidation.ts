@@ -56,7 +56,7 @@ const Z_MedicalConsultation = z.object({
     .trim()
     .min(MIN_CHAR_SHORT, minValidationMessage("Consultant", MIN_CHAR_SHORT))
     .max(MAX_CHAR_SHORT, maxValidationMessage("Consultant", MAX_CHAR_SHORT)),
-  date: z.date().max(new Date(), "Consultation date cannot be in the future"),
+  date: z.date().max(new Date(), "Consultation date cannot be in the future").optional(),
   diagnosis: z
     .string()
     .trim()

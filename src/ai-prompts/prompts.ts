@@ -1,6 +1,10 @@
 import { HealthRecordType } from "../models/health-record/healthRecordValidation";
 import { indexToNatural } from "../utils/helpers";
 
+// Reference date used to resolve relative date phrases like "today", "yesterday", or "3 days ago".
+// Computed in UTC once at module load to keep behavior stable within a single server run.
+const REFERENCE_DATE = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
 export default {
   system: {
     init: `
@@ -12,14 +16,17 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-        "medicalConsultations"?: Array<{ consultant: string, date: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
       }
 
       Extraction rules:
       - Extract only clear, medically relevant details explicitly stated by the user. Do not infer or guess.
       - Description: concise cleaned summary of the medical content only (no placeholders, jokes, chit-chat, or unrelated info).
-      - Symptoms: include only symptoms clearly mentioned. Separate unrelated symptoms. If startDate is unclear, omit it.
-      - Dates: use ISO format YYYY-MM-DD. Never set future dates. If not clearly provided, omit the date field.
+      - Symptoms: include only symptoms clearly mentioned. Use concise medical nouns (e.g., "dizziness", not "mild dizziness"). Remove qualifiers (mild/moderate/severe/very/today/yesterday/durations). If a qualifier implies severity, set status.severity accordingly. Separate unrelated symptoms. If startDate is unclear, omit it.
+      - Dates: use ISO YYYY-MM-DD for dates that are either explicitly stated or clearly given as relative phrases for that specific item.
+        • Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to reference date ${REFERENCE_DATE} (UTC).
+        • Do NOT copy a date from one symptom to another.
+        • Never set future dates. If no clear date is given, omit the date field.
       - Status (enums, exact strings):
         • stage: one of ["open", "closed", "in-progress"]
         • severity: one of ["mild", "moderate", "severe", "variable"]
@@ -38,7 +45,7 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried": string[],
-        "medicalConsultations"?: Array<{ consultant: string, date: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
       }
 
       Rules:
@@ -62,13 +69,13 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-        "medicalConsultations"?: Array<{ consultant: string, date: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
       }
 
       Rules:
       - Preserve all existing fields. Only add symptoms that are explicitly and clearly mentioned.
       - Separate unrelated symptoms into distinct entries; do not group.
-      - Dates: use ISO YYYY-MM-DD if explicitly provided; never future dates; omit if unclear.
+  - Dates: use ISO YYYY-MM-DD. Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC); never future dates; omit if unclear.
       - Ignore non-medical content and vague/ambiguous statements; do not guess symptoms.
       - If no new symptoms are present, keep the array unchanged.
 
@@ -95,15 +102,15 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-        "medicalConsultations": Array<{ consultant: string, date: string, diagnosis: string, followUpActions?: string[] }>
+  "medicalConsultations": Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>
       }
 
       Rules:
-      - Start from the given currentRecord (do not alter existing fields or entries unless the user clearly corrects them).
+  - Start from the given currentRecord (do not alter existing fields or entries unless the user clearly corrects them).
       - Extract consultations only if explicitly stated. If multiple are mentioned, add one entry per consultation.
       - Fields:
         • consultant: include name and role if provided (e.g., "Dr. Smith, cardiologist").
-        • date: use ISO YYYY-MM-DD; never future dates; omit if unclear.
+  • date: use ISO YYYY-MM-DD; convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC); never future dates; omit if unclear.
         • diagnosis: include only the diagnosis, not advice.
         • followUpActions: list recommended actions (treatments, appointments, care). If none, use an empty array.
       - Do not infer or fabricate information. Omit fields that are not clearly provided.
@@ -134,7 +141,7 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-        "medicalConsultations"?: Array<{ consultant: string, date: string, diagnosis: string, followUpActions?: string[] }>,
+  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis: string, followUpActions?: string[] }>,
         "updates"?: Array<any>
       }
 
@@ -149,7 +156,7 @@ export default {
         If no change is clearly implied, keep currentRecord values; if absent and unclear, use defaults stage="open", severity="variable", progression="variable".
       - Treatments: append clearly mentioned items; deduplicate by case-insensitive string match.
       - Consultations: append new consultations only when explicitly provided; preserve existing entries and their followUpActions unless the user clearly updates them.
-      - Dates: use ISO YYYY-MM-DD. Never set future dates. Omit date fields if not clearly provided.
+  - Dates: use ISO YYYY-MM-DD. Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC). Never set future dates. Omit date fields if not clearly provided.
       - Multiple user messages: merge facts; the latest message overrides earlier contradictions.
       - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
 
