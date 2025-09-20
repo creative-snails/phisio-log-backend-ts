@@ -25,6 +25,10 @@ export async function validateHealthRecord(
   conversation: Conversation,
   isUpdate?: boolean
 ): Promise<ValidationHelathRecordReturn> {
+  // Never allow 'updates' to be set via the main create/update flows
+  if (!isUpdate && (healthRecord as { updates?: unknown }).updates) {
+    delete (healthRecord as { updates?: unknown }).updates;
+  }
   // Convert dates to valid dates before handing over to validation
   if (healthRecord.symptoms?.length) {
     healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({

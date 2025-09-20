@@ -38,8 +38,9 @@ export default {
           - Past consultations (already happened): include with diagnosis; add any recommended or planned actions (e.g., MRI) to followUpActions.
           - Future appointments (booked/planned): include consultant and date; omit diagnosis; add any recommended/planned actions (e.g., MRI next week) to followUpActions.
           - Recommendations without a booked appointment (e.g., "doctor recommended an MRI next week") are not consultations on their own; however, if a future appointment is also implied/created, include the recommendation in that appointment’s followUpActions.
-      - Multiple user messages: merge medically relevant facts across all user messages; the latest user message overrides earlier contradictions.
-      - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
+  - Multiple user messages: merge medically relevant facts across all user messages; the latest user message overrides earlier contradictions.
+  - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
+  - Do not include an "updates" field in the output.
     `,
     treatments: (currentRecord: Partial<HealthRecordType>) => `
       Append user-tried treatments to the current record. Output a single JSON object only (no prose).
@@ -53,17 +54,19 @@ export default {
   "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
-      Rules:
-      - Preserve all existing fields from currentRecord. Only append clearly stated treatments the user has already tried (e.g., "I took ibuprofen").
-      - Do NOT include recommendations or plans (e.g., "doctor recommended" or "will try" do not belong here).
-      - Normalize: trim strings and deduplicate case-insensitively.
-      - If no treatments are mentioned, keep the array as-is (or use an empty array if absent). Do not invent items.
-      - Do not alter status, symptoms, or consultations unless explicitly updated by the user.
+  Rules (append-only):
+  - Preserve all existing fields from currentRecord.
+  - Treatments are append-only: never remove or reorder existing items; only add clearly stated items the user already did (e.g., "I took ibuprofen").
+  - Do NOT include recommendations or plans (e.g., "doctor recommended" or "will try").
+  - Normalize: trim strings and deduplicate case-insensitively; keep the original order of existing items.
+  - If no treatments are mentioned, keep the array unchanged. Do not invent items.
+  - Do not alter status, symptoms, or consultations unless explicitly corrected by the user.
 
       currentRecord:
       ${JSON.stringify(currentRecord)}
 
       Output JSON only; do not invent values; apply the rules strictly.
+      Do not include an "updates" field in the output.
     `,
     symptoms: (currentRecord: Partial<HealthRecordType>) => `
       Append clearly stated additional symptoms to the current record. Output a single JSON object only (no prose).
@@ -77,17 +80,19 @@ export default {
   "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
-      Rules:
-      - Preserve all existing fields. Only add symptoms that are explicitly and clearly mentioned.
-      - Separate unrelated symptoms into distinct entries; do not group.
-  - Dates: use ISO YYYY-MM-DD. Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC); never future dates; omit if unclear.
-      - Ignore non-medical content and vague/ambiguous statements; do not guess symptoms.
-      - If no new symptoms are present, keep the array unchanged.
+    Rules (append-only):
+    - Preserve all existing fields and items exactly as they are; never remove or reorder existing symptoms.
+    - Add only symptoms that are explicitly and clearly mentioned; append new items to the end of the array.
+    - Separate unrelated symptoms into distinct entries; do not group.
+    - Dates: use ISO YYYY-MM-DD. Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC); never future dates; omit if unclear.
+    - Ignore non-medical content and vague/ambiguous statements; do not guess symptoms.
+    - If no new symptoms are present, keep the array unchanged.
 
       currentRecord:
       ${JSON.stringify(currentRecord)}
 
       Output JSON only; do not invent values; apply the rules strictly.
+      Do not include an "updates" field in the output.
     `,
     validation: `
       Write a brief, supportive message guiding the user to fix validation issues. Keep it under 80 words.
@@ -110,9 +115,10 @@ export default {
   "medicalConsultations": Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
-      Rules:
-  - Start from the given currentRecord (do not alter existing fields or entries unless the user clearly corrects them).
-  - Consultations:
+      Rules (append-only):
+      - Start from currentRecord and preserve all existing fields and items. Do not remove, replace, or reorder existing consultations.
+      - Append new consultations only when explicitly provided. Update an existing consultation only if the user clearly corrects that same visit (match by consultant and/or date). Otherwise, keep previous entries exactly as-is.
+      - Consultations:
     • Past consultations (already happened): include with diagnosis; also include any recommended/planned actions (tests like MRI, medications, appointments) as followUpActions.
     • Future appointments (booked/planned): include consultant and date; omit diagnosis; include recommended/planned actions (e.g., MRI next week) as followUpActions.
     • Recommendations without a booked appointment are not consultations by themselves; if a future appointment is also implied, attach the recommendation as followUpActions.
@@ -128,17 +134,17 @@ export default {
       ${JSON.stringify(currentRecord)}
 
       Output JSON only; do not invent values; apply the rules strictly.
+      Do not include an "updates" field in the output.
     `,
     followUps: (currentRecord: Partial<HealthRecordType>, consultationIndex: number) => `
-      This is your output, update it to include the new requirements.
-      Don't update single value entries that were already generated if not needed:
+      This is your output—update it minimally to include only the new follow-up actions. Preserve everything else.
+      Do not modify unrelated fields.
       ${JSON.stringify(currentRecord)}
 
-      Identify and extract any follow-up actions mentioned by the user. Add them only to the "followUpActions" array for the ${indexToNatural(consultationIndex)} consultation.
-      - Even if the user does not explicitly mention a follow-up action, extract any information that implies follow-up care such as appointments, treatments, or recommendations.
-      - If multiple follow-up actions are mentioned, create a new entry for each one in the "followUpActions" array.
-      - If no follow-up actions are mentioned, leave the array empty.
-      - Assume that, if a follow-up action was already prompted for and remains empty, the user intentionally left it that way.
+      Identify and extract follow-up actions mentioned by the user. Add them only to the "followUpActions" array for the ${indexToNatural(consultationIndex)} consultation.
+      - Append-only: do not remove existing follow-up actions; add new ones at the end (dedupe case-insensitively).
+      - If multiple follow-up actions are mentioned, add each as a separate item.
+      - If none are mentioned, leave the array unchanged.
     `,
     update: (currentRecord: Partial<HealthRecordType>) => `
       Update an existing health record by merging new user input into the current record. Output a single JSON object only (no prose).
@@ -149,27 +155,26 @@ export default {
         "symptoms": Array<{ name: string, startDate?: string }>,
         "status": { stage: string, severity: string, progression: string },
         "treatmentsTried"?: string[],
-  "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>,
-        "updates"?: Array<any>
+        "medicalConsultations"?: Array<{ consultant: string, date?: string, diagnosis?: string, followUpActions?: string[] }>
       }
 
-      Merge rules:
-      - Start from currentRecord. Only change a field if the user clearly updated or contradicted it; otherwise keep existing values.
-  - Description: produce a concise, cleaned summary combining prior content with any new medically relevant details.
-      - Symptoms: append clearly stated new symptoms. Do not remove existing symptoms unless the user explicitly retracts them. Omit startDate if unclear.
+    Merge rules (append-only):
+    - Start from currentRecord. Arrays are append-only: keep all existing items and their order for symptoms, treatmentsTried, and medicalConsultations. Do not remove or replace prior items unless the user explicitly says to remove/correct them.
+    - When the user clearly corrects a prior item (e.g., same consultant and/or date), update that specific item instead of creating a duplicate. Otherwise append new information.
+    - Description: produce a concise, cleaned summary combining prior content with any new medically relevant details.
+    - Symptoms: append clearly stated new symptoms; never drop existing symptoms. Omit startDate if unclear.
       - Status (enums, exact strings):
         • stage in ["open","closed","in-progress"],
         • severity in ["mild","moderate","severe","variable"],
         • progression in ["improving","stable","worsening","variable"].
         If no change is clearly implied, keep currentRecord values; if absent and unclear, use defaults stage="open", severity="variable", progression="variable".
         Map phrases like "getting worse/worsening" to progression="worsening". Do not change severity unless explicitly stated.
-  - Treatments: append clearly mentioned items the user already did (verbs: took/used/tried/applied/did); deduplicate by case-insensitive string match. Exclude plans (e.g., "I will try").
-      - Consultations: append new consultations when explicitly provided:
-        • Past consultations (already happened): include diagnosis; add recommended/planned actions to followUpActions; preserve existing entries unless the user clearly updates them.
-        • Future appointments (booked/planned): include consultant and date; omit diagnosis; include recommended/planned actions (e.g., MRI) in followUpActions. Do not create consultations from recommendations alone if no appointment is implied.
+      - Treatments: append clearly mentioned items the user already did (verbs: took/used/tried/applied/did); deduplicate by case-insensitive string match; never remove existing items. Exclude plans (e.g., "I will try").
+      - Consultations: append new consultations when explicitly provided; never drop or reorder existing ones. Update an existing visit only if the user clearly corrects it (match by consultant and/or date). Otherwise, keep prior entries unchanged and add new ones at the end.
   - Dates: use ISO YYYY-MM-DD. Convert relative references (e.g., "today", "yesterday", "last week", "3 days ago", "last Monday") relative to ${REFERENCE_DATE} (UTC). Never set future dates. Omit date fields if not clearly provided.
-      - Multiple user messages: merge facts; the latest message overrides earlier contradictions.
-      - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
+  - Multiple user messages: merge facts; the latest message overrides earlier contradictions.
+  - Do not invent fields or values. If a field is not clearly provided and has no default, omit it.
+  - Do not include an "updates" field in the output.
 
       currentRecord:
       ${JSON.stringify(currentRecord)}
@@ -186,7 +191,7 @@ export default {
       } recommend any follow-up actions (e.g., tests, medications, lifestyle changes, appointments)? Please list them. If none, say "none".`,
 
     symptoms:
-      "You mentioned only one symptom. Are there any others to add? List each symptom separately (e.g., 'headache', 'nausea'). Dates are optional; if unsure, skip them.",
+      "Any other symptoms to add? We'll keep your existing list—just share new ones, one per line (e.g., 'headache', 'nausea'). Dates are optional; if unsure, skip them.",
     treatments:
       "Have you already tried any treatments for this condition (e.g., ibuprofen, ice, rest)? List only what you've already done—exclude plans or doctor recommendations.",
   },
