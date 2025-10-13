@@ -102,31 +102,6 @@ const Z_MedicalConsultation = z
     }
   });
 
-export const Z_HealthRecordUpdate = z.object({
-  description: z
-    .string()
-    .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
-    .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG))
-    .optional(),
-  symptoms: z.array(Z_Symptom).optional().default([]),
-  status: Z_Status.optional(),
-  treatmentsTried: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
-        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Treatments tried", MAX_CHAR_MEDIUM))
-    )
-    .optional()
-    .default([]),
-  medicalConsultations: z
-    .array(Z_MedicalConsultation)
-    .max(10, "You can only have up to 10 medical consultations.")
-    .optional()
-    .default([]),
-});
-
 export const Z_HealthRecord = z.object({
   user: z
     .string()
@@ -135,6 +110,7 @@ export const Z_HealthRecord = z.object({
     .max(MAX_CHAR_SHORT, maxValidationMessage("User", MAX_CHAR_SHORT))
     .optional()
     .default("me"),
+  parentId: z.string().optional().nullable(),
   description: z
     .string()
     .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
@@ -156,8 +132,6 @@ export const Z_HealthRecord = z.object({
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
-  updates: z.array(Z_HealthRecordUpdate).optional().default([]),
 });
 
-export type HealthRecordUpdateType = z.infer<typeof Z_HealthRecordUpdate>;
 export type HealthRecordType = z.infer<typeof Z_HealthRecord>;

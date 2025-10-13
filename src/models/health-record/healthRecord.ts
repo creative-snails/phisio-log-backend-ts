@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { PROGRESSION_TYPES, SEVERITY_TYPES, STAGE_TYPES } from "./healthRecordService";
-import { HealthRecordType, HealthRecordUpdateType } from "./healthRecordValidation";
+import { HealthRecordType } from "./healthRecordValidation";
 
 const { Schema } = mongoose;
 
@@ -51,35 +51,17 @@ const medicalConsultationSchema = new Schema({
   },
 });
 
-const updateSchema = new Schema<HealthRecordUpdateType>(
-  {
-    description: {
-      type: String,
-      trim: true,
-    },
-    symptoms: {
-      type: [symptomSchema],
-      default: [],
-    },
-    status: statusSchema,
-    treatmentsTried: {
-      type: [String],
-      default: [],
-    },
-    medicalConsultations: {
-      type: [medicalConsultationSchema],
-      default: [],
-    },
-  },
-  { timestamps: true }
-);
-
 const recordSchema = new Schema<HealthRecordType>(
   {
     user: {
       type: String,
       default: "me",
       //required: true,
+    },
+    parentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Record",
+      default: null,
     },
     description: {
       type: String,
@@ -101,10 +83,6 @@ const recordSchema = new Schema<HealthRecordType>(
     },
     medicalConsultations: {
       type: [medicalConsultationSchema],
-      default: [],
-    },
-    updates: {
-      type: [updateSchema],
       default: [],
     },
   },
