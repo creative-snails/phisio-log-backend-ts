@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { z } from "zod";
 import {
   MAX_CHAR_LONG,
@@ -132,6 +133,24 @@ export const Z_HealthRecord = z.object({
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
+  updates: z
+    .array(z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ObjectId format"))
+    .optional()
+    .default([]),
 });
 
-export type HealthRecordType = z.infer<typeof Z_HealthRecord>;
+export const Z_HealthRecordUpdate = Z_HealthRecord.omit({
+  updates: true,
+  parentId: true,
+}).partial({
+  status: true,
+  symptoms: true,
+  medicalConsultations: true,
+});
+
+export type HealthRecordType = z.infer<typeof Z_HealthRecord> & {
+  parentId?: Types.ObjectId | null;
+  updates?: Types.ObjectId[];
+};
+
+export type HealthRecordUpdateType = z.infer<typeof Z_HealthRecordUpdate>;
