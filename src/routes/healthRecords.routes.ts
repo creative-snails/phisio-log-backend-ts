@@ -190,23 +190,22 @@ router.post(
       if (validationResult.success) {
         systemPrompt = validationResult?.systemPrompt ?? "";
 
-        const savedHealthRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
-        await savedHealthRecord.save();
+        const newUpdateRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
+        await newUpdateRecord.save();
 
-        const updatedRecord = savedHealthRecord;
-
-        const rootRecord = await HealthRecord.findById(updatedRecord.rootId);
-        await HealthRecord.findByIdAndUpdate(updatedRecord.rootId, {
-          ...rootRecord,
-          updates: rootRecord?.updates.push(updatedRecord._id),
-        });
-
-        if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+        const rootId = newUpdateRecord.rootId;
+        if (rootId) {
+          await HealthRecord.findByIdAndUpdate(
+            rootId,
+            { $push: { updates: newUpdateRecord._id } },
+            { new: true, runValidators: true }
+          );
+        }
 
         res.status(200).json({
           conversationId: conversation.id,
           message: validationResult.assistantPrompt,
-          healthRecord: updatedRecord,
+          healthRecord: newUpdateRecord,
         });
       } else {
         res.status(200).json({
