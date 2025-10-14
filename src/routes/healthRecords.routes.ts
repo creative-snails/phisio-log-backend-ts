@@ -159,37 +159,26 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
-router.put(
-  "/updates/:parentHealthRecordId/:updateHealthRecordId?",
+// PUT/PATCH for changes on current record
+
+// POST for creating new update
+// I need: parentId
+// Create a new conversation
+// Create a new record (update/child) with 'parentId' but no 'updates' array + Add update/child record id into 'update' array of parent record
+router.post(
+  "/updates/:parentId",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (req: Request, res: Response): Promise<Response | any> => {
     try {
       let systemPrompt = "";
       let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
-      const { parentHealthRecordId, updateHealthRecordId } = req.params;
-      const { conversationId, message } = req.body;
+      const { parentId } = req.params;
+      const { message } = req.body;
 
-      const parentRecord = await HealthRecord.findById(parentHealthRecordId);
+      const parentRecord = await HealthRecord.findById(parentId);
       if (!parentRecord) return res.status(404).json({ error: "Health record not found" });
 
-      let updateRecord;
-      if (updateHealthRecordId) {
-        const updateRecordTemp = await HealthRecord.findOne(
-          { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
-          {
-            "updates.$": 1,
-          }
-        );
-        if (!updateRecordTemp) return res.status(404).json({ error: "Health record update not found" });
-        updateRecord = updateRecordTemp.updates[0];
-      }
-
-      let conversation = getConversation(conversations, conversationId);
-
-      conversation =
-        conversation && conversation?.healthRecordId === updateHealthRecordId
-          ? conversation
-          : createNewConversation(prompts.system.update(updateRecord ?? parentRecord), updateHealthRecordId);
+      const conversation = createNewConversation(prompts.system.update(parentRecord), parentId);
 
       conversation.lastAccessed = Date.now();
 
@@ -207,7 +196,12 @@ router.put(
       if (validationResult.success) {
         systemPrompt = validationResult?.systemPrompt ?? "";
 
-        let updatedRecord;
+        const savedHealthRecord = new HealthRecord({ ...healthRecordUpdate });
+        await savedHealthRecord.save();
+
+        const updatedRecord = savedHealthRecord;
+
+        /*  let updatedRecord;
         if (updateHealthRecordId) {
           const updateFields: { [key: string]: string | number | boolean | object | undefined } = {};
           Object.keys(healthRecordUpdate).forEach((key) => {
@@ -229,7 +223,7 @@ router.put(
             { $push: { updates: healthRecordUpdate } },
             { new: true }
           );
-        }
+        } */
 
         if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
 
