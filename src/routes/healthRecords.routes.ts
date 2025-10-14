@@ -159,12 +159,6 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
-// PUT/PATCH for changes on current record
-
-// POST for creating new update
-// I need: parentId
-// Create a new conversation
-// Create a new record (update/child) with 'parentId' but no 'updates' array + Add update/child record id into 'update' array of parent record
 router.post(
   "/updates/:parentId",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -196,34 +190,16 @@ router.post(
       if (validationResult.success) {
         systemPrompt = validationResult?.systemPrompt ?? "";
 
-        const savedHealthRecord = new HealthRecord({ ...healthRecordUpdate });
+        const savedHealthRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
         await savedHealthRecord.save();
 
         const updatedRecord = savedHealthRecord;
 
-        /*  let updatedRecord;
-        if (updateHealthRecordId) {
-          const updateFields: { [key: string]: string | number | boolean | object | undefined } = {};
-          Object.keys(healthRecordUpdate).forEach((key) => {
-            if (key !== "_id" && key !== "createdAt" && key !== "updatedAt")
-              updateFields[`updates.$[update].${key}`] = healthRecordUpdate[key as keyof typeof healthRecordUpdate];
-          });
-
-          updatedRecord = await HealthRecord.findOneAndUpdate(
-            { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
-            { $set: updateFields },
-            {
-              arrayFilters: [{ "update._id": updateHealthRecordId }],
-              new: true,
-            }
-          );
-        } else {
-          updatedRecord = await HealthRecord.findByIdAndUpdate(
-            parentHealthRecordId,
-            { $push: { updates: healthRecordUpdate } },
-            { new: true }
-          );
-        } */
+        const rootRecord = await HealthRecord.findById(updatedRecord.rootId);
+        await HealthRecord.findByIdAndUpdate(updatedRecord.rootId, {
+          ...rootRecord,
+          updates: rootRecord?.updates.push(updatedRecord._id),
+        });
 
         if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
 
