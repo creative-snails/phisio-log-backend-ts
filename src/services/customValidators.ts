@@ -65,7 +65,7 @@ export async function validateHealthRecord(
     const validatedRecord = isUpdate ? Z_HealthRecordUpdate.parse(healthRecord) : Z_HealthRecord.parse(healthRecord);
     console.log("Validation successful!");
 
-    if (!additionalSymptoms && validatedRecord.symptoms.length < MINIMUM_SYMPTOMS) {
+    if (!additionalSymptoms && (validatedRecord.symptoms?.length ?? 0) < MINIMUM_SYMPTOMS) {
       conversation.requestedData.additionalSymptoms = true;
       return {
         success: true,
@@ -73,7 +73,7 @@ export async function validateHealthRecord(
         systemPrompt: prompts.system.symptoms(validatedRecord as Partial<HealthRecordType>),
       };
     }
-    if (!treatmentsTried && !validatedRecord.treatmentsTried.length) {
+    if (!treatmentsTried && !validatedRecord.treatmentsTried?.length) {
       conversation.requestedData.treatmentsTried = true;
       return {
         success: true,
@@ -81,7 +81,7 @@ export async function validateHealthRecord(
         systemPrompt: prompts.system.treatments(validatedRecord as Partial<HealthRecordType>),
       };
     }
-    if (!medicalConsultations && !validatedRecord.medicalConsultations.length) {
+    if (!medicalConsultations && !validatedRecord.medicalConsultations?.length) {
       conversation.requestedData.medicalConsultations = true;
       return {
         success: true,
@@ -90,7 +90,7 @@ export async function validateHealthRecord(
       };
     }
 
-    const consultationIndex = validatedRecord.medicalConsultations.findIndex((consultation, index) => {
+    const consultationIndex = validatedRecord.medicalConsultations?.findIndex((consultation, index) => {
       // Skip if we already prompted for follow-ups or user provided them
       if (followUps[index]) return false;
 
@@ -103,10 +103,10 @@ export async function validateHealthRecord(
       return true;
     });
 
-    if (consultationIndex !== -1) {
+    if (consultationIndex && consultationIndex !== -1) {
       followUps[consultationIndex] = true;
       const consultationOrder =
-        validatedRecord.medicalConsultations.length > 1 ? indexToNatural(consultationIndex) : "";
+        validatedRecord.medicalConsultations!.length > 1 ? indexToNatural(consultationIndex) : "";
       return {
         success: true,
         assistantPrompt: prompts.assistant.followUps(consultationOrder),

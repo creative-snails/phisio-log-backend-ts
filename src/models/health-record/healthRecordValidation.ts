@@ -137,11 +137,12 @@ export const Z_HealthRecord = z.object({
 });
 
 export const Z_HealthRecordUpdate = Z_HealthRecord.omit({
-  updates: true,
   rootId: true,
+  updates: true,
 }).partial({
-  status: true,
   symptoms: true,
+  status: true,
+  treatmentsTried: true,
   medicalConsultations: true,
 });
 
