@@ -58,7 +58,7 @@ const recordSchema = new Schema<HealthRecordType>(
       default: "me",
       //required: true,
     },
-    parentId: {
+    rootId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Record",
       default: null,
@@ -92,7 +92,7 @@ const recordSchema = new Schema<HealthRecordType>(
       validate: {
         validator: function (this: HealthRecordType, updates: mongoose.Schema.Types.ObjectId[]) {
           // Only allow updates array on top-level records
-          return !this.parentId || !updates || updates.length === 0;
+          return !this.rootId || !updates || updates.length === 0;
         },
         message: "Child records (updates) cannot have their own updates array.",
       },

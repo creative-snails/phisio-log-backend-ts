@@ -111,7 +111,7 @@ export const Z_HealthRecord = z.object({
     .max(MAX_CHAR_SHORT, maxValidationMessage("User", MAX_CHAR_SHORT))
     .optional()
     .default("me"),
-  parentId: z.string().optional().nullable(),
+  rootId: z.string().optional().nullable(),
   description: z
     .string()
     .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
@@ -141,7 +141,7 @@ export const Z_HealthRecord = z.object({
 
 export const Z_HealthRecordUpdate = Z_HealthRecord.omit({
   updates: true,
-  parentId: true,
+  rootId: true,
 }).partial({
   status: true,
   symptoms: true,
