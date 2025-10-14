@@ -88,7 +88,6 @@ const recordSchema = new Schema<HealthRecordType>(
     updates: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Record",
-      default: [],
       validate: {
         validator: function (this: HealthRecordType, updates: mongoose.Schema.Types.ObjectId[]) {
           // Only allow updates array on top-level records
@@ -100,6 +99,14 @@ const recordSchema = new Schema<HealthRecordType>(
   },
   { timestamps: true }
 );
+
+// Pre-save hook middleware to ensure updates array is only on top-level records
+recordSchema.pre("save", function (next) {
+  if (this.rootId) {
+    this.updates = undefined;
+  }
+  next();
+});
 
 const HealthRecord = mongoose.model("Record", recordSchema);
 
