@@ -184,9 +184,10 @@ router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Pr
     if (validationResult.assistantPrompt)
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
-    if (validationResult.success) {
-      const systemPrompt = validationResult?.systemPrompt ?? "";
+    if (validationResult.systemPrompt)
+      conversation.history.push({ role: "system", content: validationResult.systemPrompt });
 
+    if (validationResult.success && !validationResult.assistantPrompt) {
       const updatedRecord = await HealthRecord.findByIdAndUpdate(
         healthRecordId,
         { $set: partialUpdate },
@@ -197,14 +198,12 @@ router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Pr
         conversationId: conversation.id,
         healthRecordId: recordToUpdate._id,
         message: validationResult.assistantPrompt,
-        updatedRecord,
+        healthRecord: updatedRecord,
       });
-      if (validationResult?.systemPrompt) conversation.history.push({ role: "system", content: systemPrompt });
     } else {
       res.status(400).json({
         message: "Validation failed for the generated update.",
       });
-      return;
     }
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
@@ -213,8 +212,6 @@ router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Pr
 
 router.post("/updates/:parentId", async (req: Request, res: Response): Promise<void> => {
   try {
-    let systemPrompt = "";
-    let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
     const { parentId } = req.params;
     const { message } = req.body;
 
@@ -228,7 +225,7 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
-    healthRecordUpdate = JSON.parse(generatedJSON);
+    const healthRecordUpdate: Partial<HealthRecordUpdateType> = JSON.parse(generatedJSON);
 
     // Third argument indicates an update (defaults to false)
     const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
@@ -236,9 +233,10 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
     if (validationResult.assistantPrompt)
       conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
 
-    if (validationResult.success) {
-      systemPrompt = validationResult?.systemPrompt ?? "";
+    if (validationResult.systemPrompt)
+      conversation.history.push({ role: "system", content: validationResult.systemPrompt });
 
+    if (validationResult.success && !validationResult.assistantPrompt) {
       const newUpdateRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
       await newUpdateRecord.save();
 
@@ -251,8 +249,9 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
         );
       }
 
-      res.status(200).json({
+      res.status(201).json({
         conversationId: conversation.id,
+        healthRecordId: newUpdateRecord._id,
         message: validationResult.assistantPrompt,
         healthRecord: newUpdateRecord,
       });
@@ -262,7 +261,6 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
         message: validationResult.assistantPrompt,
       });
     }
-    if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
