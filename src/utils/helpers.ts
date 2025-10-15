@@ -22,7 +22,7 @@ export function getConversation(conversations: Map<string, Conversation>, conver
   const conversation = conversations.get(conversationId);
   if (!conversation) return;
 
-  conversation.history = conversation.history.filter((prompt) => prompt.role === "user");
+  conversation.history = conversation.history.filter((prompt) => prompt.role === "user" || prompt.role === "system");
   conversation.lastAccessed = Date.now();
   return conversation;
 }
