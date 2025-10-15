@@ -161,6 +161,56 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
+router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { healthRecordId } = req.params;
+    const { conversationId, message } = req.body;
+
+    const recordToUpdate = await HealthRecord.findById(healthRecordId);
+    if (!recordToUpdate) {
+      res.status(400).json({ error: "Health record not found" });
+      return;
+    }
+
+    const conversation =
+      getConversation(conversations, conversationId) || createNewConversation(prompts.system.update(recordToUpdate));
+    conversation.history.push({ role: "user", content: message });
+
+    const generatedJSON = await jsonGen(conversation.history);
+    const partialUpdate: Partial<HealthRecordType> = JSON.parse(generatedJSON);
+
+    const validationResult = await validateHealthRecord(partialUpdate, conversation);
+
+    if (validationResult.assistantPrompt)
+      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
+
+    if (validationResult.success) {
+      const systemPrompt = validationResult?.systemPrompt ?? "";
+
+      const updatedRecord = await HealthRecord.findByIdAndUpdate(
+        healthRecordId,
+        { $set: partialUpdate },
+        { new: true, runValidators: true }
+      );
+
+      res.status(200).json({
+        conversationId: conversation.id,
+        healthRecordId: recordToUpdate._id,
+        message: validationResult.assistantPrompt,
+        updatedRecord,
+      });
+      if (validationResult?.systemPrompt) conversation.history.push({ role: "system", content: systemPrompt });
+    } else {
+      res.status(400).json({
+        message: "Validation failed for the generated update.",
+      });
+      return;
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
+
 router.post("/updates/:parentId", async (req: Request, res: Response): Promise<void> => {
   try {
     let systemPrompt = "";
