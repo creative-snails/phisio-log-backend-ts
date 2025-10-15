@@ -175,13 +175,12 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
     }
 
     const conversation = createNewConversation(prompts.system.update(parentRecord), parentId);
-    conversation.lastAccessed = Date.now();
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
     healthRecordUpdate = JSON.parse(generatedJSON);
 
-    // Third argument indicates whether this is an update (default is false)
+    // Third argument indicates an update (defaults to false)
     const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
 
     if (validationResult.assistantPrompt)
@@ -198,7 +197,7 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
         await HealthRecord.findByIdAndUpdate(
           rootId,
           { $push: { updates: newUpdateRecord._id } },
-          { new: true, runValidators: true }
+          { runValidators: true }
         );
       }
 
