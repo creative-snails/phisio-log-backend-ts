@@ -136,6 +136,18 @@ export const Z_HealthRecord = z.object({
   updates: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ObjectId format")).optional(),
 });
 
+// Schema for PATCH operations, allowing partial updates to any field
+export const Z_HealthRecordPatch = Z_HealthRecord.extend({
+  symptoms: z.array(Z_Symptom.partial()).optional(),
+  status: Z_Status.partial().optional(),
+  medicalConsultations: z.array(Z_MedicalConsultation._def.schema.partial()).optional(),
+})
+  .omit({
+    rootId: true, // rootId is immutable
+    updates: true, // updates array is managed by the system
+  })
+  .partial();
+
 export const Z_HealthRecordUpdate = Z_HealthRecord.omit({
   rootId: true,
   updates: true,

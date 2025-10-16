@@ -3,7 +3,11 @@ import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
 import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
-import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
+import {
+  HealthRecordType,
+  HealthRecordUpdateType,
+  Z_HealthRecordPatch,
+} from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
 import { getConversation, removeStaleConversations } from "../utils/helpers";
@@ -161,50 +165,56 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
+// Revisit validation logic in this route - we might not need assistant prompts since it is just a partial update -> either success or fail
 router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Promise<void> => {
   try {
     const { healthRecordId } = req.params;
-    const { conversationId, message } = req.body;
+    // Natural language message. or data object with partial fields (form)
+    const { message, data, conversationId } = req.body;
 
-    const recordToUpdate = await HealthRecord.findById(healthRecordId);
-    if (!recordToUpdate) {
-      res.status(400).json({ error: "Health record not found" });
+    if (!message && !data) {
+      res.status(400).json({ error: "Request must include either 'message' or 'data' field." });
       return;
     }
 
-    const conversation =
-      getConversation(conversations, conversationId) || createNewConversation(prompts.system.update(recordToUpdate));
-    conversation.history.push({ role: "user", content: message });
-
-    const generatedJSON = await jsonGen(conversation.history);
-    const partialUpdate: Partial<HealthRecordType> = JSON.parse(generatedJSON);
-
-    const validationResult = await validateHealthRecord(partialUpdate, conversation);
-
-    if (validationResult.assistantPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
-
-    if (validationResult.systemPrompt)
-      conversation.history.push({ role: "system", content: validationResult.systemPrompt });
-
-    if (validationResult.success && !validationResult.assistantPrompt) {
-      const updatedRecord = await HealthRecord.findByIdAndUpdate(
-        healthRecordId,
-        { $set: partialUpdate },
-        { new: true, runValidators: true }
-      );
-
-      res.status(200).json({
-        conversationId: conversation.id,
-        healthRecordId: recordToUpdate._id,
-        message: validationResult.assistantPrompt,
-        healthRecord: updatedRecord,
-      });
-    } else {
-      res.status(400).json({
-        message: "Validation failed for the generated update.",
-      });
+    const recordToUpdate = await HealthRecord.findById(healthRecordId);
+    if (!recordToUpdate) {
+      res.status(404).json({ error: "Health record not found" });
+      return;
     }
+
+    let partialUpdate: Partial<HealthRecordType>;
+
+    if (message) {
+      const conversation =
+        getConversation(conversations, conversationId) || createNewConversation(prompts.system.update(recordToUpdate));
+      conversation.history.push({ role: "user", content: message });
+      const generatedJSON = await jsonGen(conversation.history);
+      partialUpdate = JSON.parse(generatedJSON);
+    } else {
+      partialUpdate = data;
+    }
+
+    const validationResult = Z_HealthRecordPatch.safeParse(partialUpdate);
+
+    if (!validationResult.success) {
+      res
+        .status(400)
+        .json({ message: "Validation failed for the provided update.", errors: validationResult.error.flatten() });
+      return;
+    }
+
+    // Apply only the validated partial data to the record
+    const updatedRecord = await HealthRecord.findByIdAndUpdate(
+      healthRecordId,
+      { $set: validationResult.data },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      message: "Record updated successfully.",
+      healthRecord: updatedRecord,
+    });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
@@ -227,7 +237,6 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
     const generatedJSON = await jsonGen(conversation.history);
     const healthRecordUpdate: Partial<HealthRecordUpdateType> = JSON.parse(generatedJSON);
 
-    // Third argument indicates an update (defaults to false)
     const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
 
     if (validationResult.assistantPrompt)
