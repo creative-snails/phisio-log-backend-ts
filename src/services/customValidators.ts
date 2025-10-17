@@ -1,14 +1,9 @@
 import { ZodError } from "zod";
 import prompts from "../ai-prompts/prompts";
 import { MIN_CHAR_MEDIUM } from "../models/health-record/healthRecordService";
-import {
-  HealthRecordType,
-  HealthRecordUpdateType,
-  Z_HealthRecord,
-  Z_HealthRecordUpdate,
-} from "../models/health-record/healthRecordValidation";
+import { HealthRecordType, Z_HealthRecord } from "../models/health-record/healthRecordValidation";
 import { Conversation } from "../routes/healthRecords.routes";
-import { indexToNatural } from "../utils/helpers";
+import { indexToNatural, preProcessDates } from "../utils/helpers";
 import { textGen } from "./genAI";
 
 interface ValidationHelathRecordReturn {
@@ -21,35 +16,26 @@ interface ValidationHelathRecordReturn {
 const MINIMUM_SYMPTOMS = 2;
 
 export async function validateHealthRecord(
-  healthRecord: Partial<HealthRecordType> | Partial<HealthRecordUpdateType>,
-  conversation: Conversation,
-  isUpdate?: boolean
+  healthRecord: Partial<HealthRecordType>,
+  conversation: Conversation
 ): Promise<ValidationHelathRecordReturn> {
   // Convert dates to valid dates before handing over to validation
-  if (healthRecord.symptoms?.length) {
-    healthRecord.symptoms = healthRecord.symptoms?.map((symptom) => ({
-      ...symptom,
-      startDate: symptom.startDate ? new Date(symptom.startDate) : undefined,
-    }));
-  }
+  preProcessDates(healthRecord);
 
   if (healthRecord.medicalConsultations?.length) {
     const now = new Date();
     healthRecord.medicalConsultations = healthRecord.medicalConsultations
       .map((consultation) => {
-        const parsedDate = (consultation as { date?: string | number | Date }).date
-          ? new Date((consultation as { date: string | number | Date }).date)
-          : undefined;
-        const isFuture = parsedDate instanceof Date && parsedDate.getTime() > now.getTime();
+        const isFuture = consultation.date instanceof Date && consultation.date.getTime() > now.getTime();
         if (isFuture) {
           // Planned consultation: keep consultant and date; drop diagnosis but preserve follow-ups if present
           return {
             ...consultation,
-            date: parsedDate,
+            date: consultation.date,
             diagnosis: undefined,
           } as typeof consultation;
         }
-        return { ...consultation, date: parsedDate };
+        return { ...consultation, date: consultation.date };
       })
       // Drop entries with no consultant at all
       .filter((c) => Boolean((c as { consultant?: string }).consultant?.trim()));
@@ -58,7 +44,7 @@ export async function validateHealthRecord(
   const { additionalSymptoms, treatmentsTried, medicalConsultations, followUps } = conversation.requestedData;
 
   try {
-    const validatedRecord = isUpdate ? Z_HealthRecordUpdate.parse(healthRecord) : Z_HealthRecord.parse(healthRecord);
+    const validatedRecord = Z_HealthRecord.parse(healthRecord);
     console.log("Validation successful!");
 
     if (!additionalSymptoms && (validatedRecord.symptoms?.length ?? 0) < MINIMUM_SYMPTOMS) {
