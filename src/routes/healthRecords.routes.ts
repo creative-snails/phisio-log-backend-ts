@@ -5,12 +5,12 @@ import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
 import {
   HealthRecordType,
-  HealthRecordUpdateType,
   Z_HealthRecordPatch,
+  Z_HealthRecordUpdate,
 } from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
-import { getConversation, removeStaleConversations } from "../utils/helpers";
+import { getConversation, preProcessDates, removeStaleConversations } from "../utils/helpers";
 
 const MAX_CONVERSATION_AGE = 24 * 60 * 60 * 1000;
 
@@ -26,7 +26,7 @@ export type Conversation = {
   id: string;
   history: Message[];
   lastAccessed: number;
-  healthRecordId?: string; // new prop
+  healthRecordId?: string;
   requestedData: {
     additionalSymptoms: boolean;
     treatmentsTried: boolean;
@@ -42,7 +42,7 @@ const createNewConversation = (systemPrompt: string, healthRecordId?: string): C
     id: uuidv4(),
     history: [{ role: "system", content: systemPrompt }],
     lastAccessed: Date.now(),
-    healthRecordId, // new prop
+    healthRecordId,
     requestedData: {
       additionalSymptoms: false,
       treatmentsTried: false,
@@ -165,11 +165,10 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
   }
 });
 
-// Revisit validation logic in this route - we might not need assistant prompts since it is just a partial update -> either success or fail
 router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Promise<void> => {
   try {
     const { healthRecordId } = req.params;
-    // Natural language message. or data object with partial fields (form)
+    // Natural language message, or data object with partial fields (form)
     const { message, data, conversationId } = req.body;
 
     if (!message && !data) {
@@ -194,6 +193,8 @@ router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Pr
     } else {
       partialUpdate = data;
     }
+
+    preProcessDates(partialUpdate);
 
     const validationResult = Z_HealthRecordPatch.safeParse(partialUpdate);
 
@@ -235,41 +236,36 @@ router.post("/updates/:parentId", async (req: Request, res: Response): Promise<v
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
-    const healthRecordUpdate: Partial<HealthRecordUpdateType> = JSON.parse(generatedJSON);
+    const healthRecordUpdate: HealthRecordType = JSON.parse(generatedJSON);
 
-    const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
+    preProcessDates(healthRecordUpdate);
 
-    if (validationResult.assistantPrompt)
-      conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
+    const validationResult = Z_HealthRecordUpdate.safeParse(healthRecordUpdate);
 
-    if (validationResult.systemPrompt)
-      conversation.history.push({ role: "system", content: validationResult.systemPrompt });
-
-    if (validationResult.success && !validationResult.assistantPrompt) {
-      const newUpdateRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
-      await newUpdateRecord.save();
-
-      const rootId = newUpdateRecord.rootId;
-      if (rootId) {
-        await HealthRecord.findByIdAndUpdate(
-          rootId,
-          { $push: { updates: newUpdateRecord._id } },
-          { runValidators: true }
-        );
-      }
-
-      res.status(201).json({
-        conversationId: conversation.id,
-        healthRecordId: newUpdateRecord._id,
-        message: validationResult.assistantPrompt,
-        healthRecord: newUpdateRecord,
-      });
-    } else {
-      res.status(200).json({
-        conversationId: conversation.id,
-        message: validationResult.assistantPrompt,
-      });
+    if (!validationResult.success) {
+      res
+        .status(400)
+        .json({ message: "Validation failed for the provided update.", errors: validationResult.error.flatten() });
+      return;
     }
+
+    const newUpdateRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
+    await newUpdateRecord.save();
+
+    const rootId = newUpdateRecord.rootId;
+    if (rootId) {
+      await HealthRecord.findByIdAndUpdate(
+        rootId,
+        { $push: { updates: newUpdateRecord._id } },
+        { runValidators: true }
+      );
+    }
+
+    res.status(201).json({
+      message: "Record updated successfully.",
+      healthRecordId: newUpdateRecord._id,
+      healthRecord: newUpdateRecord,
+    });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }

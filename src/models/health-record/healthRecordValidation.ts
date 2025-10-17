@@ -162,5 +162,5 @@ export type HealthRecordType = z.infer<typeof Z_HealthRecord> & {
   parentId?: Types.ObjectId | null;
   updates?: Types.ObjectId[];
 };
-
-export type HealthRecordUpdateType = z.infer<typeof Z_HealthRecordUpdate>;
+export type SymptomType = z.infer<typeof Z_Symptom>;
+export type MedicalConsultationType = z.infer<typeof Z_MedicalConsultation>;
