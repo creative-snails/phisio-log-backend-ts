@@ -3,10 +3,14 @@ import { schedule } from "node-cron";
 import { v4 as uuidv4 } from "uuid";
 import prompts from "../ai-prompts/prompts";
 import HealthRecord from "../models/health-record/healthRecord";
-import { HealthRecordType, HealthRecordUpdateType } from "../models/health-record/healthRecordValidation";
+import {
+  HealthRecordType,
+  Z_HealthRecordPatch,
+  Z_HealthRecordUpdate,
+} from "../models/health-record/healthRecordValidation";
 import { validateHealthRecord } from "../services/customValidators";
 import { jsonGen, Message } from "../services/genAI";
-import { getConversation, removeStaleConversations } from "../utils/helpers";
+import { getConversation, preProcessDates, removeStaleConversations } from "../utils/helpers";
 
 const MAX_CONVERSATION_AGE = 24 * 60 * 60 * 1000;
 
@@ -22,7 +26,7 @@ export type Conversation = {
   id: string;
   history: Message[];
   lastAccessed: number;
-  healthRecordId?: string; // new prop
+  healthRecordId?: string;
   requestedData: {
     additionalSymptoms: boolean;
     treatmentsTried: boolean;
@@ -38,7 +42,7 @@ const createNewConversation = (systemPrompt: string, healthRecordId?: string): C
     id: uuidv4(),
     history: [{ role: "system", content: systemPrompt }],
     lastAccessed: Date.now(),
-    healthRecordId, // new prop
+    healthRecordId,
     requestedData: {
       additionalSymptoms: false,
       treatmentsTried: false,
@@ -58,14 +62,11 @@ router.post("/new-record", async (req: Request, res: Response) => {
     const { conversationId, message } = req.body;
 
     const conversation = getConversation(conversations, conversationId) || createNewConversation(prompts.system.init);
-
-    console.log("\n\nCONVERSATION HISTORY post FIRST: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
-
     conversation.history.push({ role: "user", content: message });
 
     const generatedJSON = await jsonGen(conversation.history);
-
     healthRecord = JSON.parse(generatedJSON);
+
     const validationResult = await validateHealthRecord(healthRecord, conversation);
 
     if (validationResult.assistantPrompt)
@@ -92,31 +93,34 @@ router.post("/new-record", async (req: Request, res: Response) => {
         message: validationResult.assistantPrompt,
       });
     }
-
-    console.log("\n\nCONVERSATION HISTORY post LAST: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-router.put("/new-record/:healthRecordId", async (req: Request, res: Response): Promise<Response | any> => {
+router.put("/new-record/:healthRecordId", async (req: Request, res: Response): Promise<void> => {
   try {
     let systemPrompt = "";
     let healthRecord: Partial<HealthRecordType> = {};
     const { healthRecordId } = req.params;
     const { conversationId, message } = req.body;
 
-    if (!conversationId || !healthRecordId)
-      return res.status(400).json({ error: "Both conversationId and healthRecordId are required" });
+    if (!conversationId || !healthRecordId) {
+      res.status(400).json({ error: "Both conversationId and healthRecordId are required" });
+      return;
+    }
 
     const conversation = getConversation(conversations, conversationId);
-    if (!conversation) return res.status(404).json({ error: "Conversation not found" });
-
-    console.log("\n\nCONVERSATION HISTORY put FIRST: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
+    if (!conversation) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
 
     const existingRecrod = await HealthRecord.findById(healthRecordId);
-    if (!existingRecrod) return res.status(404).json({ error: "Health record not found" });
+    if (!existingRecrod) {
+      res.status(404).json({ error: "Health record not found" });
+      return;
+    }
 
     healthRecord = existingRecrod;
 
@@ -124,7 +128,7 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
       { role: "system", content: prompts.system.update(healthRecord) },
       { role: "user", content: message }
     );
-    console.log("\n\nCONVERSATION HISTORY put MID: ", JSON.stringify(conversation.history, null, 2) + "\n\n");
+
     const generatedJSON = await jsonGen(conversation.history);
     healthRecord = JSON.parse(generatedJSON);
     const validationResult = await validateHealthRecord(healthRecord, conversation);
@@ -136,7 +140,10 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
       systemPrompt = validationResult?.systemPrompt ?? "";
 
       const updatedRecord = await HealthRecord.findByIdAndUpdate(healthRecordId, { ...healthRecord }, { new: true });
-      if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
+      if (!updatedRecord) {
+        res.status(404).json({ error: "Health record not found" });
+        return;
+      }
 
       healthRecord = updatedRecord;
 
@@ -153,102 +160,115 @@ router.put("/new-record/:healthRecordId", async (req: Request, res: Response): P
     }
 
     if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
-    console.log("CONVERSATION HISTORY put LAST: ", conversation.history);
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
   }
 });
 
-router.put(
-  "/updates/:parentHealthRecordId/:updateHealthRecordId?",
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async (req: Request, res: Response): Promise<Response | any> => {
-    try {
-      let systemPrompt = "";
-      let healthRecordUpdate: Partial<HealthRecordUpdateType> = {};
-      const { parentHealthRecordId, updateHealthRecordId } = req.params;
-      const { conversationId, message } = req.body;
+router.patch("/updates/:healthRecordId", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { healthRecordId } = req.params;
+    // Natural language message, or data object with partial fields (form)
+    const { message, data, conversationId } = req.body;
 
-      const parentRecord = await HealthRecord.findById(parentHealthRecordId);
-      if (!parentRecord) return res.status(404).json({ error: "Health record not found" });
-
-      let updateRecord;
-      if (updateHealthRecordId) {
-        const updateRecordTemp = await HealthRecord.findOne(
-          { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
-          {
-            "updates.$": 1,
-          }
-        );
-        if (!updateRecordTemp) return res.status(404).json({ error: "Health record update not found" });
-        updateRecord = updateRecordTemp.updates[0];
-      }
-
-      let conversation = getConversation(conversations, conversationId);
-
-      conversation =
-        conversation && conversation?.healthRecordId === updateHealthRecordId
-          ? conversation
-          : createNewConversation(prompts.system.update(updateRecord ?? parentRecord), updateHealthRecordId);
-
-      conversation.lastAccessed = Date.now();
-
-      conversation.history.push({ role: "user", content: message });
-
-      const generatedJSON = await jsonGen(conversation.history);
-      healthRecordUpdate = JSON.parse(generatedJSON);
-
-      // Third argument indicates whether this is an update (default is false)
-      const validationResult = await validateHealthRecord(healthRecordUpdate, conversation, true);
-
-      if (validationResult.assistantPrompt)
-        conversation.history.push({ role: "assistant", content: validationResult.assistantPrompt });
-
-      if (validationResult.success) {
-        systemPrompt = validationResult?.systemPrompt ?? "";
-
-        let updatedRecord;
-        if (updateHealthRecordId) {
-          const updateFields: { [key: string]: string | number | boolean | object | undefined } = {};
-          Object.keys(healthRecordUpdate).forEach((key) => {
-            if (key !== "_id" && key !== "createdAt" && key !== "updatedAt")
-              updateFields[`updates.$[update].${key}`] = healthRecordUpdate[key as keyof typeof healthRecordUpdate];
-          });
-
-          updatedRecord = await HealthRecord.findOneAndUpdate(
-            { _id: parentHealthRecordId, "updates._id": updateHealthRecordId },
-            { $set: updateFields },
-            {
-              arrayFilters: [{ "update._id": updateHealthRecordId }],
-              new: true,
-            }
-          );
-        } else {
-          updatedRecord = await HealthRecord.findByIdAndUpdate(
-            parentHealthRecordId,
-            { $push: { updates: healthRecordUpdate } },
-            { new: true }
-          );
-        }
-
-        if (!updatedRecord) return res.status(404).json({ error: "Health record not found" });
-
-        res.status(200).json({
-          conversationId: conversation.id,
-          message: validationResult.assistantPrompt,
-          healthRecord: updatedRecord,
-        });
-      } else {
-        res.status(200).json({
-          conversationId: conversation.id,
-          message: validationResult.assistantPrompt,
-        });
-      }
-      if (validationResult.assistantPrompt) conversation.history.push({ role: "system", content: systemPrompt });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error", error });
+    if (!message && !data) {
+      res.status(400).json({ error: "Request must include either 'message' or 'data' field." });
+      return;
     }
+
+    const recordToUpdate = await HealthRecord.findById(healthRecordId);
+    if (!recordToUpdate) {
+      res.status(404).json({ error: "Health record not found" });
+      return;
+    }
+
+    let partialUpdate: Partial<HealthRecordType>;
+
+    if (message) {
+      const conversation =
+        getConversation(conversations, conversationId) || createNewConversation(prompts.system.update(recordToUpdate));
+      conversation.history.push({ role: "user", content: message });
+      const generatedJSON = await jsonGen(conversation.history);
+      partialUpdate = JSON.parse(generatedJSON);
+    } else {
+      partialUpdate = data;
+    }
+
+    preProcessDates(partialUpdate);
+
+    const validationResult = Z_HealthRecordPatch.safeParse(partialUpdate);
+
+    if (!validationResult.success) {
+      res
+        .status(400)
+        .json({ message: "Validation failed for the provided update.", errors: validationResult.error.flatten() });
+      return;
+    }
+
+    // Apply only the validated partial data to the record
+    const updatedRecord = await HealthRecord.findByIdAndUpdate(
+      healthRecordId,
+      { $set: validationResult.data },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      message: "Record updated successfully.",
+      healthRecord: updatedRecord,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
   }
-);
+});
+
+router.post("/updates/:parentId", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { parentId } = req.params;
+    const { message } = req.body;
+
+    const parentRecord = await HealthRecord.findById(parentId);
+    if (!parentRecord) {
+      res.status(404).json({ error: "Health record not found" });
+      return;
+    }
+
+    const conversation = createNewConversation(prompts.system.update(parentRecord), parentId);
+    conversation.history.push({ role: "user", content: message });
+
+    const generatedJSON = await jsonGen(conversation.history);
+    const healthRecordUpdate: HealthRecordType = JSON.parse(generatedJSON);
+
+    preProcessDates(healthRecordUpdate);
+
+    const validationResult = Z_HealthRecordUpdate.safeParse(healthRecordUpdate);
+
+    if (!validationResult.success) {
+      res
+        .status(400)
+        .json({ message: "Validation failed for the provided update.", errors: validationResult.error.flatten() });
+      return;
+    }
+
+    const newUpdateRecord = new HealthRecord({ ...healthRecordUpdate, rootId: parentRecord.rootId ?? parentId });
+    await newUpdateRecord.save();
+
+    const rootId = newUpdateRecord.rootId;
+    if (rootId) {
+      await HealthRecord.findByIdAndUpdate(
+        rootId,
+        { $push: { updates: newUpdateRecord._id } },
+        { runValidators: true }
+      );
+    }
+
+    res.status(201).json({
+      message: "Record updated successfully.",
+      healthRecordId: newUpdateRecord._id,
+      healthRecord: newUpdateRecord,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
 
 export default router;

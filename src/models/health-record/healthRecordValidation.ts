@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { z } from "zod";
 import {
   MAX_CHAR_LONG,
@@ -102,31 +103,6 @@ const Z_MedicalConsultation = z
     }
   });
 
-export const Z_HealthRecordUpdate = z.object({
-  description: z
-    .string()
-    .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
-    .max(MAX_CHAR_LONG, maxValidationMessage("Description", MAX_CHAR_LONG))
-    .optional(),
-  symptoms: z.array(Z_Symptom).optional().default([]),
-  status: Z_Status.optional(),
-  treatmentsTried: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(MIN_CHAR_SHORT, minValidationMessage("Treatments tried", MIN_CHAR_SHORT))
-        .max(MAX_CHAR_MEDIUM, maxValidationMessage("Treatments tried", MAX_CHAR_MEDIUM))
-    )
-    .optional()
-    .default([]),
-  medicalConsultations: z
-    .array(Z_MedicalConsultation)
-    .max(10, "You can only have up to 10 medical consultations.")
-    .optional()
-    .default([]),
-});
-
 export const Z_HealthRecord = z.object({
   user: z
     .string()
@@ -135,6 +111,7 @@ export const Z_HealthRecord = z.object({
     .max(MAX_CHAR_SHORT, maxValidationMessage("User", MAX_CHAR_SHORT))
     .optional()
     .default("me"),
+  rootId: z.string().optional().nullable(),
   description: z
     .string()
     .min(MIN_CHAR_MEDIUM, minValidationMessage("Description", MIN_CHAR_MEDIUM))
@@ -156,8 +133,34 @@ export const Z_HealthRecord = z.object({
     .max(10, "You can only have up to 10 medical consultations.")
     .optional()
     .default([]),
-  updates: z.array(Z_HealthRecordUpdate).optional().default([]),
+  updates: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ObjectId format")).optional(),
 });
 
-export type HealthRecordUpdateType = z.infer<typeof Z_HealthRecordUpdate>;
-export type HealthRecordType = z.infer<typeof Z_HealthRecord>;
+// Schema for PATCH operations, allowing partial updates to any field
+export const Z_HealthRecordPatch = Z_HealthRecord.extend({
+  symptoms: z.array(Z_Symptom.partial()).optional(),
+  status: Z_Status.partial().optional(),
+  medicalConsultations: z.array(Z_MedicalConsultation._def.schema.partial()).optional(),
+})
+  .omit({
+    rootId: true, // rootId is immutable
+    updates: true, // updates array is managed by the system
+  })
+  .partial();
+
+export const Z_HealthRecordUpdate = Z_HealthRecord.omit({
+  rootId: true,
+  updates: true,
+}).partial({
+  symptoms: true,
+  status: true,
+  treatmentsTried: true,
+  medicalConsultations: true,
+});
+
+export type HealthRecordType = z.infer<typeof Z_HealthRecord> & {
+  parentId?: Types.ObjectId | null;
+  updates?: Types.ObjectId[];
+};
+export type SymptomType = z.infer<typeof Z_Symptom>;
+export type MedicalConsultationType = z.infer<typeof Z_MedicalConsultation>;

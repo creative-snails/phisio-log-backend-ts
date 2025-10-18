@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { PROGRESSION_TYPES, SEVERITY_TYPES, STAGE_TYPES } from "./healthRecordService";
-import { HealthRecordType, HealthRecordUpdateType } from "./healthRecordValidation";
+import { HealthRecordType } from "./healthRecordValidation";
 
 const { Schema } = mongoose;
 
@@ -51,35 +51,17 @@ const medicalConsultationSchema = new Schema({
   },
 });
 
-const updateSchema = new Schema<HealthRecordUpdateType>(
-  {
-    description: {
-      type: String,
-      trim: true,
-    },
-    symptoms: {
-      type: [symptomSchema],
-      default: [],
-    },
-    status: statusSchema,
-    treatmentsTried: {
-      type: [String],
-      default: [],
-    },
-    medicalConsultations: {
-      type: [medicalConsultationSchema],
-      default: [],
-    },
-  },
-  { timestamps: true }
-);
-
 const recordSchema = new Schema<HealthRecordType>(
   {
     user: {
       type: String,
       default: "me",
       //required: true,
+    },
+    rootId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Record",
+      default: null,
     },
     description: {
       type: String,
@@ -104,12 +86,27 @@ const recordSchema = new Schema<HealthRecordType>(
       default: [],
     },
     updates: {
-      type: [updateSchema],
-      default: [],
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Record",
+      validate: {
+        validator: function (this: HealthRecordType, updates: mongoose.Schema.Types.ObjectId[]) {
+          // Only allow updates array on top-level records
+          return !this.rootId || !updates || updates.length === 0;
+        },
+        message: "Child records (updates) cannot have their own updates array.",
+      },
     },
   },
   { timestamps: true }
 );
+
+// Pre-save hook middleware to ensure updates array is only on top-level records
+recordSchema.pre("save", function (next) {
+  if (this.rootId) {
+    this.updates = undefined;
+  }
+  next();
+});
 
 const HealthRecord = mongoose.model("Record", recordSchema);
 
